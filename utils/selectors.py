@@ -7,7 +7,7 @@
 
 from typing import Dict
 
-selectors: dict[str, dict[str, dict[str, str]]] = {
+selectors: Dict[str, Dict[str, Dict[str, str]]] = {
     "default": {
         "title": {
             "css": "h1.page-header__title::text",
@@ -32,20 +32,34 @@ selectors: dict[str, dict[str, dict[str, str]]] = {
         "categories": {
             "css": "#catlinks li a::attr(href)",
             "xpath": "//div[@id='catlinks']//li/a/@href"
-        }
+        },
     },
-    # 未來可依 domain 或 fandom 名稱，覆寫或擴充特定站點的 selectors
+
+    # **只更新這邊**：移除 :has()、:contains()  等不支援的 CSS，改用最簡單能選到的元素
     "onepiece": {
-        "title":       {"css": "...", "xpath": "..."},
-        "synopsis":    {"css": "...", "xpath": "..."},
-        "image_urls":  {"css": "...", "xpath": "..."},
-        "characters":  {"css": "table.infobox tr:has(th:contains('Characters')) td a::text",
-                        "xpath": "//table[contains(@class,'infobox')]//tr[th/text()='Characters']/td//a/text()"},
-        "first_release": {"css": "table.infobox tr:has(th:contains('First appearance')) td::text",
-                            "xpath": "//table[contains(@class,'infobox')]//tr[th/text()='First appearance']/td/text()"},
-    },
-    "starwars": { ... },
-    "got":      { ... },
+        "title": {
+            "css": "h1.page-header__title::text",
+            "xpath": "//h1[contains(@class,'page-header__title')]/text()"
+        },
+        "synopsis": {
+            "css": "div.mw-parser-output > p::text",
+            "xpath": "//div[contains(@class,'mw-parser-output')]/p[1]/text()"
+        },
+        "image_urls": {
+            "css": "aside.portable-infobox img::attr(src)",
+            "xpath": "//aside[contains(@class,'portable-infobox')]//img/@src"
+        },
+        # 原本的複雜 CSS 改成「選出所有 infobox 內 <a> 文字」
+        "characters": {
+            "css": "table.infobox td a::text",
+            "xpath": "//table[contains(@class,'infobox')]//tr[th/text()='Characters']/td//a/text()"
+        },
+        # 讓 CSS 空白，統一走 XPath
+        "first_release": {
+            "css": "",
+            "xpath": "//table[contains(@class,'infobox')]//tr[th/text()='First appearance']/td/text()"
+        },
+    }
 }
 
 def get_selector(anime: str, field: str) -> str:
