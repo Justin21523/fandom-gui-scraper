@@ -35,8 +35,17 @@ selectors: dict[str, dict[str, dict[str, str]]] = {
         }
     },
     # 未來可依 domain 或 fandom 名稱，覆寫或擴充特定站點的 selectors
+    "onepiece": {
+        "title":       {"css": "...", "xpath": "..."},
+        "synopsis":    {"css": "...", "xpath": "..."},
+        "image_urls":  {"css": "...", "xpath": "..."},
+        "characters":  {"css": "table.infobox tr:has(th:contains('Characters')) td a::text",
+                        "xpath": "//table[contains(@class,'infobox')]//tr[th/text()='Characters']/td//a/text()"},
+        "first_release": {"css": "table.infobox tr:has(th:contains('First appearance')) td::text",
+                            "xpath": "//table[contains(@class,'infobox')]//tr[th/text()='First appearance']/td/text()"},
+    },
     "starwars": { ... },
-    "got":      { ... }
+    "got":      { ... },
 }
 
 def get_selector(anime: str, field: str) -> str:
