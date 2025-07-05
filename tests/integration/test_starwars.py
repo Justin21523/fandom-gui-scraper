@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 from utils.selectors import selectors
 
 
-
 def main():
     url = "https://starwars.fandom.com/wiki/Luke_Skywalker"
     resp = requests.get(url, timeout=10)
