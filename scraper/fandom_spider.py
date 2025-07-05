@@ -76,4 +76,4 @@ if __name__ == "__main__":
         print("解析結果：")
         for k, v in itm.items():
             print(f"  {k}: {v[:2] if isinstance(v, list) else v}")
-    print("✅ FandomSpider 通用爬取邏輯正常")
+    print("✅ FandomSpider 通用爬取邏輯正常。")
