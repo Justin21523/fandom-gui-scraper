@@ -48,3 +48,22 @@ def get_selector(anime: str, field: str) -> str:
         return selectors[anime][field]
     except KeyError as e:
         raise KeyError(f"找不到動畫 {anime} 的欄位 {field} 的 selector") from e
+
+def get_selector(site: str, field: str, method="css") -> str:
+
+    """
+    取得指定頁面、指定欄位的 selector 字串。
+    若找不到，拋出 KeyError。
+    """
+    try:
+        cfg = selectors[site][field]
+    except KeyError as e:
+        raise KeyError(f"找不到網站 {site} 的欄位 {field} 的 selector") from e
+    return cfg.get(method)
+
+
+if __name__ == "__main__":
+    # 用最簡單的 assert 測試
+    print("▶ 測試 get_selector")
+    assert get_selector("default", "title") == "h1.page-header__title::text"
+    print("✅ selectors OK")

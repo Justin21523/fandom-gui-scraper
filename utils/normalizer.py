@@ -38,3 +38,8 @@ def normalize_date(date_str: str) -> str:
         y, mo, d = m.groups()
         return f"{y}-{int(mo):02d}-{int(d):02d}"
     return date_str
+
+if __name__ == "__main__":
+    print("▶ 測試 clean_text")
+    assert clean_text("  Hello \nWorld ") == "Hello World"
+    print("✅ clean_text OK")
