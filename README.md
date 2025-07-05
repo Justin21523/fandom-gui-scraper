@@ -42,3 +42,11 @@ my_fandom_scraper/
 ```
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-fandom--gui--scraper-blue)](https://github.com/justin21523/fandom-gui-scraper)
+
+## 📚 Project Diagrams & Guides
+
+- [Project Setup And Initialize](setup_initialization_and_git.md)
+- ![Module Dependency](diagrams/01_module_dependency_graph.png)
+- ![Directory Structure](diagrams/02_project_directory_structure.png)
+- ![Scrapy Pipeline Flow](diagrams/03_pipeline_flow.png)
+- ![Scrapy Pipeline To mongoDB Storage](diagrams/04_pipeline_to_mongodb_storage.png)
