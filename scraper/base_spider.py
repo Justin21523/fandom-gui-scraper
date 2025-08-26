@@ -46,7 +46,7 @@ class BaseSpider(scrapy.Spider):
         if cfg.get("css"):
             try:
                 text = response.css(cfg["css"]).get()
-            except SelectorSyntaxError:
+            except SelectorSyntaxError: # 重要避免某些selectors出現問題 導致爬蟲掛掉
                 # CSS 語法不支援，跳過
                 text = None
 

@@ -74,3 +74,54 @@ flowchart TD
 
 > 完成此文件後，可放置於專案根目錄下，命名為 `ROADMAP.md`，並於 README 中加上連結，方便團隊檢視與追蹤進度。
 
+---
+
+## 📁 Diagrams Folder File Naming Suggestions
+
+請將所有 Mermaid 圖檔放置於 `diagrams/` 資料夾，並採用以下統一的英文命名格式：
+
+```
+01-module-dependency-graph.png
+02-project-directory-structure.png
+03-scrapy-pipeline-flow.png
+04-pipeline-to-mongodb-storage.png
+```
+
+* **前綴編號** (`01`, `02`, ...)：保持圖檔顯示順序一致
+* **小寫字母** 及 **hyphen 分隔**：提升可讀性與一致性
+
+---
+
+## 📝 Git Commit Message Guidelines
+
+從現在開始，所有的 Git commit message 請使用英文且遵循以下規範：
+
+```
+<type>: <subject>
+
+<body (optional)>
+```
+
+* **type**: 表示變更類別，常見的 options 包括：
+
+  * `feat` (new feature)
+  * `fix` (bug fix)
+  * `docs` (documentation only)
+  * `style` (formatting, missing semi colons, etc.)
+  * `refactor` (code change that neither fixes a bug nor adds a feature)
+  * `test` (adding missing tests or correcting existing tests)
+  * `chore` (changes to the build process or auxiliary tools)
+
+* **subject**: 簡短描述 (使用動詞原形，限 50 字以內)
+
+* **body** (optional): 如有必要，可在空一行後詳述改動內容或原因
+
+**範例**:
+
+```
+feat: implement extract fallback mechanism in BaseSpider
+fix: add default name property to BaseSpider to avoid ValueError
+test: add prototype_starwars.py self-test script
+```
+
+如此能保持 commit messages 的清晰、一致與可追溯。

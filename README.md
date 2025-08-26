@@ -38,7 +38,7 @@ my_fandom_scraper/
 │   └── selectors.py
 │   └── normalizer.py
 │
-#…（其他資料夾不變）…
+#…（其他資料夾不變）…=
 ```
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-fandom--gui--scraper-blue)](https://github.com/justin21523/fandom-gui-scraper)
