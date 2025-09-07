@@ -1,0 +1,82 @@
+name: env-web
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Core Python
+  - python=3.10
+  - pip
+
+  # Scientific Computing
+  - numpy>=1.24.0
+  - pandas>=1.5.0
+
+  # Web and Networking
+  - requests>=2.28.0
+  - lxml>=4.9.0
+  - beautifulsoup4>=4.11.0
+
+  # GUI Framework
+  - pyqt=5
+
+  # Image Processing
+  - pillow>=9.4.0
+
+  # Configuration and Data
+  - pyyaml>=6.0
+
+  # Development Tools
+  - ipython>=8.10.0
+
+  # Pip packages that are not available in conda-forge or need specific versions
+  - pip:
+      # Web Scraping
+      - Scrapy>=2.8.0
+      - motor>=3.1.0
+
+      # Database
+      - pymongo>=4.3.0
+
+      # Data Validation and Processing
+      - pydantic>=1.10.0
+
+      # Configuration Management
+      - python-dotenv>=1.0.0
+
+      # Logging and Monitoring
+      - loguru>=0.6.0
+
+      # Testing Framework
+      - pytest>=7.2.0
+      - pytest-qt>=4.2.0
+      - pytest-cov>=4.0.0
+      - pytest-mock>=3.10.0
+
+      # Code Quality Tools
+      - black>=23.0.0
+      - isort>=5.12.0
+      - flake8>=6.0.0
+      - mypy>=1.0.0
+
+      # Documentation
+      - sphinx>=6.1.0
+      - sphinx-rtd-theme>=1.2.0
+
+      # Development Tools
+      - pre-commit>=3.0.0
+
+      # Data Export
+      - openpyxl>=3.1.0
+      - reportlab>=3.6.0
+
+      # Networking and Anti-ban
+      - user-agent>=0.1.10
+      - fake-useragent>=1.4.0
+
+      # Async Support
+      - aiohttp>=3.8.0
+
+variables:
+  # Environment variables
+  CONDA_ENV_NAME: env-web
+  PYTHONPATH: $CONDA_PREFIX/lib/python3.10/site-packages
