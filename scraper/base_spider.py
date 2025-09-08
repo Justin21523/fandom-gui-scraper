@@ -89,7 +89,7 @@ class BaseSpider(scrapy.Spider):
         self.spider_config = self._load_spider_config()
 
         # Initialize logger
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger(self.__class__.__name__)  # type: ignore
 
         self.logger.info(f"Initialized {self.name} spider for anime: {anime_name}")
 
@@ -394,7 +394,7 @@ class BaseSpider(scrapy.Spider):
             return False
 
     def create_request(
-        self, url: str, callback: Callable = None, meta: Dict[str, Any] = None, **kwargs
+        self, url: str, callback: Callable = None, meta: Dict[str, Any] = None, **kwargs  # type: ignore
     ) -> Request:
         """
         Create a properly configured Scrapy Request.
@@ -410,7 +410,7 @@ class BaseSpider(scrapy.Spider):
         """
         if not self.validate_url(url):
             self.logger.warning(f"Invalid URL rejected: {url}")
-            return None
+            return None  # type: ignore
 
         # Default callback to parse method
         if callback is None:
