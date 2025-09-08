@@ -1,0 +1,42 @@
+{
+  "one_piece": {
+    "name": "h1.page-header__title",
+    "description": ".mw-parser-output > p:first-of-type",
+    "infobox": ".portable-infobox",
+    "images": ".image img, .infobox-image img",
+    "categories": "#mw-normal-catlinks a",
+    "character_links": "a[href*='/wiki/']:not([href*='Category:'])",
+    "infobox_rows": ".portable-infobox .pi-item",
+    "gallery_images": ".wikia-gallery img"
+  },
+  "naruto": {
+    "name": "h1.page-header__title",
+    "description": ".mw-parser-output > p:first-of-type",
+    "infobox": ".portable-infobox",
+    "images": ".image img, .infobox-image img",
+    "categories": "#mw-normal-catlinks a",
+    "character_links": "a[href*='/wiki/']:not([href*='Category:'])",
+    "infobox_rows": ".portable-infobox .pi-item",
+    "gallery_images": ".wikia-gallery img"
+  },
+  "dragon_ball": {
+    "name": "h1.page-header__title",
+    "description": ".mw-parser-output > p:first-of-type",
+    "infobox": ".portable-infobox",
+    "images": ".image img, .infobox-image img",
+    "categories": "#mw-normal-catlinks a",
+    "character_links": "a[href*='/wiki/']:not([href*='Category:'])",
+    "infobox_rows": ".portable-infobox .pi-item",
+    "gallery_images": ".wikia-gallery img"
+  },
+  "generic_fandom": {
+    "name": "h1.page-header__title, h1#firstHeading",
+    "description": ".mw-parser-output > p:first-of-type, #mw-content-text > p:first-of-type",
+    "infobox": ".portable-infobox, .infobox",
+    "images": ".image img, .infobox-image img, .thumb img",
+    "categories": "#mw-normal-catlinks a, .catlinks a",
+    "character_links": "a[href*='/wiki/']:not([href*='Category:'])",
+    "infobox_rows": ".portable-infobox .pi-item, .infobox tr",
+    "gallery_images": ".wikia-gallery img, .gallery img"
+  }
+}
