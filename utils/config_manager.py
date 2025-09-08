@@ -134,6 +134,7 @@ class ConfigManager:
         Args:
             config_dir: Directory containing configuration files
         """
+        self.logger = logger
         if config_dir:
             self.config_dir = Path(config_dir)
         else:
@@ -154,6 +155,36 @@ class ConfigManager:
 
         # Ensure config directory exists
         self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Configuration file paths
+        self.app_config_file = self.config_dir / "app_config.json"
+        self.user_prefs_file = self.config_dir / "user_preferences.json"
+        self.spider_config_file = self.config_dir / "spider_defaults.json"
+
+        # Default configurations
+        self.default_app_config = {
+            "app_name": "Fandom Scraper",
+            "version": "1.0.0",
+            "auto_save": True,
+            "log_level": "INFO",
+            "max_recent_projects": 10,
+        }
+
+        self.default_user_prefs = {
+            "window_geometry": {},
+            "recent_animes": [],
+            "default_output_dir": "./storage",
+            "theme": "default",
+            "language": "en",
+        }
+
+        self.default_spider_config = {
+            "download_delay": 1.0,
+            "concurrent_requests": 8,
+            "retry_times": 3,
+            "max_characters": 100,
+            "respect_robots_txt": True,
+        }
 
         # Load configuration on initialization
         self.load_config()
@@ -199,6 +230,83 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Failed to load configuration: {e}")
             return False
+
+    def _load_config(
+        self, file_path: Path, default_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Load configuration from file with fallback to defaults.
+
+        Args:
+            file_path: Path to configuration file
+            default_config: Default configuration to use if file doesn't exist
+
+        Returns:
+            Configuration dictionary
+        """
+        try:
+            if file_path.exists():
+                with open(file_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+
+                # Merge with defaults to ensure all keys exist
+                merged_config = default_config.copy()
+                merged_config.update(config)
+                return merged_config
+            else:
+                # Create default config file
+                self._save_config(file_path, default_config)
+                return default_config.copy()
+
+        except Exception as e:
+            self.logger.error(f"Failed to load config from {file_path}: {e}")
+            return default_config.copy()
+
+    def _save_config(self, file_path: Path, config: Dict[str, Any]) -> bool:
+        """
+        Save configuration to file.
+
+        Args:
+            file_path: Path to save configuration
+            config: Configuration dictionary to save
+
+        Returns:
+            True if saved successfully
+        """
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+            self.logger.info(f"Configuration saved to {file_path}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Failed to save config to {file_path}: {e}")
+            return False
+
+    def load_app_config(self) -> Dict[str, Any]:
+        """Load application configuration."""
+        return self._load_config(self.app_config_file, self.default_app_config)
+
+    def load_user_preferences(self) -> Dict[str, Any]:
+        """Load user preferences."""
+        return self._load_config(self.user_prefs_file, self.default_user_prefs)
+
+    def load_spider_config(self) -> Dict[str, Any]:
+        """Load spider default configuration."""
+        return self._load_config(self.spider_config_file, self.default_spider_config)
+
+    def save_app_config(self, config: Dict[str, Any]) -> bool:
+        """Save application configuration."""
+        return self._save_config(self.app_config_file, config)
+
+    def save_user_preferences(self, prefs: Dict[str, Any]) -> bool:
+        """Save user preferences."""
+        return self._save_config(self.user_prefs_file, prefs)
+
+    def save_spider_config(self, config: Dict[str, Any]) -> bool:
+        """Save spider configuration."""
+        return self._save_config(self.spider_config_file, config)
 
     def _load_default_config(self):
         """Load default configuration from file."""
