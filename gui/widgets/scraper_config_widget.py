@@ -12,19 +12,36 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
-    QGroupBox, QLabel, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
-    QCheckBox, QPushButton, QTextEdit, QFileDialog, QMessageBox,
-    QTabWidget, QScrollArea, QFrame, QSlider, QProgressBar,
-    QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
-    QHeaderView, QSizePolicy
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QFormLayout,
+    QGroupBox,
+    QLabel,
+    QLineEdit,
+    QComboBox,
+    QSpinBox,
+    QDoubleSpinBox,
+    QCheckBox,
+    QPushButton,
+    QTextEdit,
+    QFileDialog,
+    QMessageBox,
+    QTabWidget,
+    QScrollArea,
+    QFrame,
+    QSlider,
+    QProgressBar,
+    QListWidget,
+    QListWidgetItem,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QSizePolicy,
 )
-from PyQt5.QtCore import (
-    pyqtSignal, pyqtSlot, Qt, QTimer, QRegExp, QThread
-)
-from PyQt5.QtGui import (
-    QFont, QRegExpValidator, QIntValidator, QDoubleValidator, QIcon
-)
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QTimer, QRegExp, QThread
+from PyQt5.QtGui import QFont, QRegExpValidator, QIntValidator, QDoubleValidator, QIcon
 
 from utils.logger import get_logger
 from utils.config_manager import ConfigManager
@@ -212,7 +229,9 @@ class ScraperConfigWidget(QWidget):
 
         # Description selector
         self.description_selector_edit = QLineEdit()
-        self.description_selector_edit.setPlaceholderText(".mw-parser-output > p:first-of-type")
+        self.description_selector_edit.setPlaceholderText(
+            ".mw-parser-output > p:first-of-type"
+        )
         self.description_selector_edit.textChanged.connect(self.on_config_changed)
         selectors_layout.addRow("Description:", self.description_selector_edit)
 
@@ -282,7 +301,9 @@ class ScraperConfigWidget(QWidget):
 
         # Custom fields table
         self.custom_fields_table = QTableWidget(0, 3)
-        self.custom_fields_table.setHorizontalHeaderLabels(["Field Name", "CSS Selector", "Data Type"])
+        self.custom_fields_table.setHorizontalHeaderLabels(
+            ["Field Name", "CSS Selector", "Data Type"]
+        )
         self.custom_fields_table.horizontalHeader().setStretchLastSection(True)
         custom_layout.addWidget(self.custom_fields_table)
 
@@ -531,18 +552,22 @@ class ScraperConfigWidget(QWidget):
         # User agent
         self.user_agent_combo = QComboBox()
         self.user_agent_combo.setEditable(True)
-        self.user_agent_combo.addItems([
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
-        ])
+        self.user_agent_combo.addItems(
+            [
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+            ]
+        )
         self.user_agent_combo.currentTextChanged.connect(self.on_config_changed)
         headers_layout.addRow("User Agent:", self.user_agent_combo)
 
         # Custom headers
         self.custom_headers_text = QTextEdit()
         self.custom_headers_text.setMaximumHeight(100)
-        self.custom_headers_text.setPlaceholderText("Enter custom headers in JSON format:\n{\n  \"Accept-Language\": \"en-US,en;q=0.9\"\n}")
+        self.custom_headers_text.setPlaceholderText(
+            'Enter custom headers in JSON format:\n{\n  "Accept-Language": "en-US,en;q=0.9"\n}'
+        )
         self.custom_headers_text.textChanged.connect(self.on_config_changed)
         headers_layout.addRow("Custom Headers:", self.custom_headers_text)
 
@@ -676,8 +701,8 @@ class ScraperConfigWidget(QWidget):
                     "description": ".mw-parser-output > p:first-of-type",
                     "infobox": ".portable-infobox",
                     "images": ".image img, .infobox-image img",
-                    "categories": "#mw-normal-catlinks a"
-                }
+                    "categories": "#mw-normal-catlinks a",
+                },
             },
             "Naruto": {
                 "base_url": "https://naruto.fandom.com/wiki/",
@@ -687,8 +712,8 @@ class ScraperConfigWidget(QWidget):
                     "description": ".mw-parser-output > p:first-of-type",
                     "infobox": ".portable-infobox",
                     "images": ".image img, .infobox-image img",
-                    "categories": "#mw-normal-catlinks a"
-                }
+                    "categories": "#mw-normal-catlinks a",
+                },
             },
             "Dragon Ball": {
                 "base_url": "https://dragonball.fandom.com/wiki/",
@@ -698,9 +723,9 @@ class ScraperConfigWidget(QWidget):
                     "description": ".mw-parser-output > p:first-of-type",
                     "infobox": ".portable-infobox",
                     "images": ".image img, .infobox-image img",
-                    "categories": "#mw-normal-catlinks a"
-                }
-            }
+                    "categories": "#mw-normal-catlinks a",
+                },
+            },
         }
         return presets
 
@@ -731,7 +756,7 @@ class ScraperConfigWidget(QWidget):
 
         if file_path:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
 
                 self.apply_configuration(config)
@@ -758,7 +783,7 @@ class ScraperConfigWidget(QWidget):
             try:
                 config = self.get_configuration()
 
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
 
                 self.logger.info(f"Configuration saved to {file_path}")
@@ -777,10 +802,11 @@ class ScraperConfigWidget(QWidget):
     def reset_to_defaults(self):
         """Reset configuration to default values."""
         reply = QMessageBox.question(
-            self, "Reset Configuration",
+            self,
+            "Reset Configuration",
             "Are you sure you want to reset all settings to defaults?",
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
@@ -796,38 +822,42 @@ class ScraperConfigWidget(QWidget):
             warnings = []
 
             # Validate required fields
-            if not config.get('base_url'):
+            if not config.get("base_url"):
                 errors.append("Base URL is required")
 
-            if not config.get('character_list_url'):
+            if not config.get("character_list_url"):
                 errors.append("Character list URL is required")
 
             # Validate URL format
-            for url_field in ['base_url', 'character_list_url']:
-                url = config.get(url_field, '')
-                if url and not url.startswith(('http://', 'https://')):
-                    errors.append(f"{url_field.replace('_', ' ').title()} must start with http:// or https://")
+            for url_field in ["base_url", "character_list_url"]:
+                url = config.get(url_field, "")
+                if url and not url.startswith(("http://", "https://")):
+                    errors.append(
+                        f"{url_field.replace('_', ' ').title()} must start with http:// or https://"
+                    )
 
             # Validate selectors
-            required_selectors = ['name_selector', 'description_selector']
+            required_selectors = ["name_selector", "description_selector"]
             for selector in required_selectors:
                 if not config.get(selector):
-                    warnings.append(f"{selector.replace('_', ' ').title()} is recommended")
+                    warnings.append(
+                        f"{selector.replace('_', ' ').title()} is recommended"
+                    )
 
             # Validate numeric ranges
-            if config.get('download_delay', 0) < 0.1:
+            if config.get("download_delay", 0) < 0.1:
                 warnings.append("Download delay should be at least 0.1 seconds")
 
-            if config.get('concurrent_requests', 1) > 16:
+            if config.get("concurrent_requests", 1) > 16:
                 warnings.append("High concurrent requests may cause rate limiting")
 
             # Validate MongoDB URI
-            mongo_uri = config.get('mongo_uri', '')
-            if mongo_uri and not mongo_uri.startswith('mongodb://'):
+            mongo_uri = config.get("mongo_uri", "")
+            if mongo_uri and not mongo_uri.startswith("mongodb://"):
                 errors.append("MongoDB URI must start with mongodb://")
 
             # Validate output directory
-            output_dir = config.get('output_directory', '')
+            output_dir = config.get("output_directory", "")
             if output_dir:
                 output_path = Path(output_dir)
                 try:
@@ -841,9 +871,13 @@ class ScraperConfigWidget(QWidget):
                 self.validate_btn.setText("❌ Invalid")
                 self.config_validated.emit(False)
 
-                error_msg = "Configuration Errors:\n" + "\n".join(f"• {error}" for error in errors)
+                error_msg = "Configuration Errors:\n" + "\n".join(
+                    f"• {error}" for error in errors
+                )
                 if warnings:
-                    error_msg += "\n\nWarnings:\n" + "\n".join(f"• {warning}" for warning in warnings)
+                    error_msg += "\n\nWarnings:\n" + "\n".join(
+                        f"• {warning}" for warning in warnings
+                    )
 
                 QMessageBox.warning(self, "Configuration Issues", error_msg)
 
@@ -852,7 +886,9 @@ class ScraperConfigWidget(QWidget):
                 self.validate_btn.setText("⚠️ Valid")
                 self.config_validated.emit(True)
 
-                warning_msg = "Configuration Warnings:\n" + "\n".join(f"• {warning}" for warning in warnings)
+                warning_msg = "Configuration Warnings:\n" + "\n".join(
+                    f"• {warning}" for warning in warnings
+                )
                 QMessageBox.information(self, "Configuration Warnings", warning_msg)
 
             else:
@@ -860,9 +896,13 @@ class ScraperConfigWidget(QWidget):
                 self.validate_btn.setText("✅ Valid")
                 self.config_validated.emit(True)
 
-                QMessageBox.information(self, "Validation Success", "Configuration is valid!")
+                QMessageBox.information(
+                    self, "Validation Success", "Configuration is valid!"
+                )
 
-            self.logger.info(f"Configuration validation completed - Errors: {len(errors)}, Warnings: {len(warnings)}")
+            self.logger.info(
+                f"Configuration validation completed - Errors: {len(errors)}, Warnings: {len(warnings)}"
+            )
 
         except Exception as e:
             self.logger.error(f"Configuration validation failed: {e}")
@@ -876,8 +916,9 @@ class ScraperConfigWidget(QWidget):
         config = self.get_configuration()
         if not config:
             QMessageBox.warning(
-                self, "Configuration Error",
-                "Please configure scraping parameters before previewing."
+                self,
+                "Configuration Error",
+                "Please configure scraping parameters before previewing.",
             )
             return
 
@@ -909,98 +950,88 @@ class ScraperConfigWidget(QWidget):
                 field_type_widget = self.custom_fields_table.cellWidget(row, 2)
 
                 if field_name and field_selector and field_type_widget:
-                    custom_fields.append({
-                        'name': field_name.text(),
-                        'selector': field_selector.text(),
-                        'type': field_type_widget.currentText()
-                    })
+                    custom_fields.append(
+                        {
+                            "name": field_name.text(),
+                            "selector": field_selector.text(),
+                            "type": field_type_widget.currentText(),
+                        }
+                    )
 
             # Retry HTTP codes parsing
             retry_codes = []
             codes_text = self.retry_codes_edit.text().strip()
             if codes_text:
                 try:
-                    retry_codes = [int(code.strip()) for code in codes_text.split(',')]
+                    retry_codes = [int(code.strip()) for code in codes_text.split(",")]
                 except ValueError:
                     self.logger.warning("Invalid retry codes format, using defaults")
                     retry_codes = [500, 502, 503, 504, 408, 429]
 
             config = {
                 # Target configuration
-                'anime_name': self.anime_combo.currentText(),
-                'base_url': self.base_url_edit.text().strip(),
-                'character_list_url': self.character_list_url_edit.text().strip(),
-                'character_pattern': self.character_pattern_edit.text().strip(),
-                'image_pattern': self.image_pattern_edit.text().strip(),
-
+                "anime_name": self.anime_combo.currentText(),
+                "base_url": self.base_url_edit.text().strip(),
+                "character_list_url": self.character_list_url_edit.text().strip(),
+                "character_pattern": self.character_pattern_edit.text().strip(),
+                "image_pattern": self.image_pattern_edit.text().strip(),
                 # Limits
-                'max_characters': self.max_characters_spin.value(),
-                'max_pages_per_character': self.max_pages_spin.value(),
-                'max_images_per_character': self.max_images_spin.value(),
-
+                "max_characters": self.max_characters_spin.value(),
+                "max_pages_per_character": self.max_pages_spin.value(),
+                "max_images_per_character": self.max_images_spin.value(),
                 # Selectors
-                'name_selector': self.name_selector_edit.text().strip(),
-                'description_selector': self.description_selector_edit.text().strip(),
-                'infobox_selector': self.infobox_selector_edit.text().strip(),
-                'image_selector': self.image_selector_edit.text().strip(),
-                'categories_selector': self.categories_selector_edit.text().strip(),
-
+                "name_selector": self.name_selector_edit.text().strip(),
+                "description_selector": self.description_selector_edit.text().strip(),
+                "infobox_selector": self.infobox_selector_edit.text().strip(),
+                "image_selector": self.image_selector_edit.text().strip(),
+                "categories_selector": self.categories_selector_edit.text().strip(),
                 # Extraction options
-                'extract_infobox': self.extract_infobox_check.isChecked(),
-                'extract_images': self.extract_images_check.isChecked(),
-                'extract_categories': self.extract_categories_check.isChecked(),
-                'extract_relationships': self.extract_relationships_check.isChecked(),
-                'extract_abilities': self.extract_abilities_check.isChecked(),
-                'extract_appearances': self.extract_appearances_check.isChecked(),
-
+                "extract_infobox": self.extract_infobox_check.isChecked(),
+                "extract_images": self.extract_images_check.isChecked(),
+                "extract_categories": self.extract_categories_check.isChecked(),
+                "extract_relationships": self.extract_relationships_check.isChecked(),
+                "extract_abilities": self.extract_abilities_check.isChecked(),
+                "extract_appearances": self.extract_appearances_check.isChecked(),
                 # Custom fields
-                'custom_fields': custom_fields,
-
+                "custom_fields": custom_fields,
                 # Performance settings
-                'download_delay': self.download_delay_spin.value(),
-                'randomize_delay': self.random_delay_check.isChecked(),
-                'concurrent_requests': self.concurrent_requests_spin.value(),
-                'auto_throttle': self.auto_throttle_check.isChecked(),
-
+                "download_delay": self.download_delay_spin.value(),
+                "randomize_delay": self.random_delay_check.isChecked(),
+                "concurrent_requests": self.concurrent_requests_spin.value(),
+                "auto_throttle": self.auto_throttle_check.isChecked(),
                 # Retry settings
-                'retry_times': self.retry_times_spin.value(),
-                'retry_delay': self.retry_delay_spin.value(),
-                'retry_http_codes': retry_codes,
-
+                "retry_times": self.retry_times_spin.value(),
+                "retry_delay": self.retry_delay_spin.value(),
+                "retry_http_codes": retry_codes,
                 # Memory and cache
-                'memory_limit_mb': self.memory_limit_spin.value(),
-                'cache_enabled': self.cache_enabled_check.isChecked(),
-                'cache_expiration': self.cache_expiration_spin.value(),
-
+                "memory_limit_mb": self.memory_limit_spin.value(),
+                "cache_enabled": self.cache_enabled_check.isChecked(),
+                "cache_expiration": self.cache_expiration_spin.value(),
                 # Storage settings
-                'output_directory': self.output_dir_edit.text().strip(),
-                'store_images_locally': self.image_storage_check.isChecked(),
-                'image_format': self.image_format_combo.currentText(),
-                'image_quality': self.image_quality_spin.value(),
-
+                "output_directory": self.output_dir_edit.text().strip(),
+                "store_images_locally": self.image_storage_check.isChecked(),
+                "image_format": self.image_format_combo.currentText(),
+                "image_quality": self.image_quality_spin.value(),
                 # Database settings
-                'mongo_uri': self.mongo_uri_edit.text().strip(),
-                'database_name': self.db_name_edit.text().strip(),
-                'collection_name': self.collection_name_edit.text().strip(),
-
+                "mongo_uri": self.mongo_uri_edit.text().strip(),
+                "database_name": self.db_name_edit.text().strip(),
+                "collection_name": self.collection_name_edit.text().strip(),
                 # Export options
-                'export_json': self.export_json_check.isChecked(),
-                'export_csv': self.export_csv_check.isChecked(),
-                'export_excel': self.export_excel_check.isChecked(),
-                'export_pdf': self.export_pdf_check.isChecked(),
-
+                "export_json": self.export_json_check.isChecked(),
+                "export_csv": self.export_csv_check.isChecked(),
+                "export_excel": self.export_excel_check.isChecked(),
+                "export_pdf": self.export_pdf_check.isChecked(),
                 # Advanced settings
-                'user_agent': self.user_agent_combo.currentText(),
-                'custom_headers': custom_headers,
-                'proxy_enabled': self.proxy_enabled_check.isChecked(),
-                'proxy_url': self.proxy_url_edit.text().strip(),
-                'javascript_enabled': self.js_enabled_check.isChecked(),
-                'page_load_timeout': self.page_timeout_spin.value(),
-
+                "user_agent": self.user_agent_combo.currentText(),
+                "custom_headers": custom_headers,
+                "proxy_enabled": self.proxy_enabled_check.isChecked(),
+                "proxy_url": self.proxy_url_edit.text().strip(),
+                "javascript_enabled": self.js_enabled_check.isChecked(),
+                "page_load_timeout": self.page_timeout_spin.value(),
                 # Logging settings
-                'log_level': self.log_level_combo.currentText(),
-                'stats_enabled': self.stats_enabled_check.isChecked(),
-                'debug_mode': self.debug_mode_check.isChecked(),
+                "log_level": self.log_level_combo.currentText(),
+                "stats_enabled": self.stats_enabled_check.isChecked(),
+                "debug_mode": self.debug_mode_check.isChecked(),
             }
 
             # Cache current configuration
@@ -1024,96 +1055,116 @@ class ScraperConfigWidget(QWidget):
         """
         try:
             # Target configuration
-            self.anime_combo.setCurrentText(config.get('anime_name', ''))
-            self.base_url_edit.setText(config.get('base_url', ''))
-            self.character_list_url_edit.setText(config.get('character_list_url', ''))
-            self.character_pattern_edit.setText(config.get('character_pattern', ''))
-            self.image_pattern_edit.setText(config.get('image_pattern', ''))
+            self.anime_combo.setCurrentText(config.get("anime_name", ""))
+            self.base_url_edit.setText(config.get("base_url", ""))
+            self.character_list_url_edit.setText(config.get("character_list_url", ""))
+            self.character_pattern_edit.setText(config.get("character_pattern", ""))
+            self.image_pattern_edit.setText(config.get("image_pattern", ""))
 
             # Limits
-            self.max_characters_spin.setValue(config.get('max_characters', 100))
-            self.max_pages_spin.setValue(config.get('max_pages_per_character', 5))
-            self.max_images_spin.setValue(config.get('max_images_per_character', 10))
+            self.max_characters_spin.setValue(config.get("max_characters", 100))
+            self.max_pages_spin.setValue(config.get("max_pages_per_character", 5))
+            self.max_images_spin.setValue(config.get("max_images_per_character", 10))
 
             # Selectors
-            self.name_selector_edit.setText(config.get('name_selector', ''))
-            self.description_selector_edit.setText(config.get('description_selector', ''))
-            self.infobox_selector_edit.setText(config.get('infobox_selector', ''))
-            self.image_selector_edit.setText(config.get('image_selector', ''))
-            self.categories_selector_edit.setText(config.get('categories_selector', ''))
+            self.name_selector_edit.setText(config.get("name_selector", ""))
+            self.description_selector_edit.setText(
+                config.get("description_selector", "")
+            )
+            self.infobox_selector_edit.setText(config.get("infobox_selector", ""))
+            self.image_selector_edit.setText(config.get("image_selector", ""))
+            self.categories_selector_edit.setText(config.get("categories_selector", ""))
 
             # Extraction options
-            self.extract_infobox_check.setChecked(config.get('extract_infobox', True))
-            self.extract_images_check.setChecked(config.get('extract_images', True))
-            self.extract_categories_check.setChecked(config.get('extract_categories', True))
-            self.extract_relationships_check.setChecked(config.get('extract_relationships', False))
-            self.extract_abilities_check.setChecked(config.get('extract_abilities', False))
-            self.extract_appearances_check.setChecked(config.get('extract_appearances', False))
+            self.extract_infobox_check.setChecked(config.get("extract_infobox", True))
+            self.extract_images_check.setChecked(config.get("extract_images", True))
+            self.extract_categories_check.setChecked(
+                config.get("extract_categories", True)
+            )
+            self.extract_relationships_check.setChecked(
+                config.get("extract_relationships", False)
+            )
+            self.extract_abilities_check.setChecked(
+                config.get("extract_abilities", False)
+            )
+            self.extract_appearances_check.setChecked(
+                config.get("extract_appearances", False)
+            )
 
             # Performance settings
-            self.download_delay_spin.setValue(config.get('download_delay', 1.0))
-            self.random_delay_check.setChecked(config.get('randomize_delay', True))
-            self.concurrent_requests_spin.setValue(config.get('concurrent_requests', 8))
-            self.auto_throttle_check.setChecked(config.get('auto_throttle', True))
+            self.download_delay_spin.setValue(config.get("download_delay", 1.0))
+            self.random_delay_check.setChecked(config.get("randomize_delay", True))
+            self.concurrent_requests_spin.setValue(config.get("concurrent_requests", 8))
+            self.auto_throttle_check.setChecked(config.get("auto_throttle", True))
 
             # Retry settings
-            self.retry_times_spin.setValue(config.get('retry_times', 3))
-            self.retry_delay_spin.setValue(config.get('retry_delay', 5.0))
-            retry_codes = config.get('retry_http_codes', [500, 502, 503, 504, 408, 429])
-            self.retry_codes_edit.setText(','.join(map(str, retry_codes)))
+            self.retry_times_spin.setValue(config.get("retry_times", 3))
+            self.retry_delay_spin.setValue(config.get("retry_delay", 5.0))
+            retry_codes = config.get("retry_http_codes", [500, 502, 503, 504, 408, 429])
+            self.retry_codes_edit.setText(",".join(map(str, retry_codes)))
 
             # Memory and cache
-            self.memory_limit_spin.setValue(config.get('memory_limit_mb', 2048))
-            self.cache_enabled_check.setChecked(config.get('cache_enabled', False))
-            self.cache_expiration_spin.setValue(config.get('cache_expiration', 3600))
+            self.memory_limit_spin.setValue(config.get("memory_limit_mb", 2048))
+            self.cache_enabled_check.setChecked(config.get("cache_enabled", False))
+            self.cache_expiration_spin.setValue(config.get("cache_expiration", 3600))
 
             # Storage settings
-            self.output_dir_edit.setText(config.get('output_directory', './storage'))
-            self.image_storage_check.setChecked(config.get('store_images_locally', True))
-            self.image_format_combo.setCurrentText(config.get('image_format', 'JPEG'))
-            self.image_quality_spin.setValue(config.get('image_quality', 85))
+            self.output_dir_edit.setText(config.get("output_directory", "./storage"))
+            self.image_storage_check.setChecked(
+                config.get("store_images_locally", True)
+            )
+            self.image_format_combo.setCurrentText(config.get("image_format", "JPEG"))
+            self.image_quality_spin.setValue(config.get("image_quality", 85))
 
             # Database settings
-            self.mongo_uri_edit.setText(config.get('mongo_uri', 'mongodb://localhost:27017/'))
-            self.db_name_edit.setText(config.get('database_name', 'fandom_scraper'))
-            self.collection_name_edit.setText(config.get('collection_name', 'characters'))
+            self.mongo_uri_edit.setText(
+                config.get("mongo_uri", "mongodb://localhost:27017/")
+            )
+            self.db_name_edit.setText(config.get("database_name", "fandom_scraper"))
+            self.collection_name_edit.setText(
+                config.get("collection_name", "characters")
+            )
 
             # Export options
-            self.export_json_check.setChecked(config.get('export_json', True))
-            self.export_csv_check.setChecked(config.get('export_csv', False))
-            self.export_excel_check.setChecked(config.get('export_excel', False))
-            self.export_pdf_check.setChecked(config.get('export_pdf', False))
+            self.export_json_check.setChecked(config.get("export_json", True))
+            self.export_csv_check.setChecked(config.get("export_csv", False))
+            self.export_excel_check.setChecked(config.get("export_excel", False))
+            self.export_pdf_check.setChecked(config.get("export_pdf", False))
 
             # Advanced settings
-            self.user_agent_combo.setCurrentText(config.get('user_agent', ''))
+            self.user_agent_combo.setCurrentText(config.get("user_agent", ""))
 
             # Custom headers
-            custom_headers = config.get('custom_headers', {})
+            custom_headers = config.get("custom_headers", {})
             if custom_headers:
                 headers_json = json.dumps(custom_headers, indent=2)
                 self.custom_headers_text.setPlainText(headers_json)
 
-            self.proxy_enabled_check.setChecked(config.get('proxy_enabled', False))
-            self.proxy_url_edit.setText(config.get('proxy_url', ''))
-            self.js_enabled_check.setChecked(config.get('javascript_enabled', False))
-            self.page_timeout_spin.setValue(config.get('page_load_timeout', 30))
+            self.proxy_enabled_check.setChecked(config.get("proxy_enabled", False))
+            self.proxy_url_edit.setText(config.get("proxy_url", ""))
+            self.js_enabled_check.setChecked(config.get("javascript_enabled", False))
+            self.page_timeout_spin.setValue(config.get("page_load_timeout", 30))
 
             # Logging settings
-            self.log_level_combo.setCurrentText(config.get('log_level', 'INFO'))
-            self.stats_enabled_check.setChecked(config.get('stats_enabled', True))
-            self.debug_mode_check.setChecked(config.get('debug_mode', False))
+            self.log_level_combo.setCurrentText(config.get("log_level", "INFO"))
+            self.stats_enabled_check.setChecked(config.get("stats_enabled", True))
+            self.debug_mode_check.setChecked(config.get("debug_mode", False))
 
             # Custom fields
-            custom_fields = config.get('custom_fields', [])
+            custom_fields = config.get("custom_fields", [])
             self.custom_fields_table.setRowCount(0)
             for field in custom_fields:
                 self.add_custom_field()
                 row = self.custom_fields_table.rowCount() - 1
-                self.custom_fields_table.setItem(row, 0, QTableWidgetItem(field.get('name', '')))
-                self.custom_fields_table.setItem(row, 1, QTableWidgetItem(field.get('selector', '')))
+                self.custom_fields_table.setItem(
+                    row, 0, QTableWidgetItem(field.get("name", ""))
+                )
+                self.custom_fields_table.setItem(
+                    row, 1, QTableWidgetItem(field.get("selector", ""))
+                )
                 type_combo = self.custom_fields_table.cellWidget(row, 2)
                 if type_combo:
-                    type_combo.setCurrentText(field.get('type', 'Text'))
+                    type_combo.setCurrentText(field.get("type", "Text"))
 
             self.logger.info("Configuration applied successfully")
 
@@ -1131,15 +1182,15 @@ class ScraperConfigWidget(QWidget):
         config = self.get_configuration()
 
         # Check required fields
-        required_fields = ['base_url', 'character_list_url', 'name_selector']
+        required_fields = ["base_url", "character_list_url", "name_selector"]
         for field in required_fields:
             if not config.get(field):
                 return False
 
         # Check URL format
-        for url_field in ['base_url', 'character_list_url']:
-            url = config.get(url_field, '')
-            if url and not url.startswith(('http://', 'https://')):
+        for url_field in ["base_url", "character_list_url"]:
+            url = config.get(url_field, "")
+            if url and not url.startswith(("http://", "https://")):
                 return False
 
         return True
@@ -1177,7 +1228,8 @@ class ScraperConfigWidget(QWidget):
             self.db_status_label.setText(message or "Connection failed")
             self.db_status_label.setStyleSheet("color: red;")
 
-        self.test_db_btn.setEnabled(True)Slot()
+        self.test_db_btn.setEnabled(True).Slot()
+
     def on_config_changed(self):
         """Handle configuration changes."""
         # Restart validation timer
@@ -1271,5 +1323,3 @@ class ScraperConfigWidget(QWidget):
         current_row = self.custom_fields_table.currentRow()
         if current_row >= 0:
             self.custom_fields_table.removeRow(current_row)
-
-    @pyqt
