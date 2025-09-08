@@ -51,8 +51,11 @@ class DatabaseManager:
         """
         self.connection_string = connection_string
         self.database_name = database_name
-        self.client: Optional[MongoClient] = None
+        self.connection = MongoDBConnection(connection_string, database_name)
+        self.client = None
         self.database: Optional[Database] = None
+        self.character_repo = None
+        self.anime_repo = None
         self._is_connected = False
 
     def connect(self) -> bool:
@@ -429,6 +432,198 @@ class DatabaseManager:
             stats["error"] = str(e)
 
         return stats
+
+    def update_character(self, character_id: str, character_data: dict) -> bool:
+        """
+        Update existing character data.
+
+        Args:
+            character_id: Character unique ID
+            character_data: Updated character data
+
+        Returns:
+            True if update successful
+        """
+        try:
+            return self.character_repo.update(character_id, character_data)  # type: ignore
+        except Exception as e:
+            print(f"Failed to update character: {e}")
+            return False
+
+    def insert_character(self, character_data: dict) -> Optional[str]:
+        """
+        Insert new character data.
+
+        Args:
+            character_data: Character data dictionary
+
+        Returns:
+            Inserted character ID or None if failed
+        """
+        try:
+            return self.character_repo.insert(character_data)  # type: ignore
+        except Exception as e:
+            print(f"Failed to insert character: {e}")
+            return None
+
+    def find_character(self, query: dict) -> Optional[dict]:
+        """
+        Find character by query.
+
+        Args:
+            query: Query dictionary (e.g., {"name": "Luffy", "anime_name": "One Piece"})
+
+        Returns:
+            Character document or None if not found
+        """
+        try:
+            if "name" in query and "anime_name" in query:
+                return self.character_repo.find_by_name_and_anime(  # type: ignore
+                    query["name"], query["anime_name"]
+                )
+            elif "_character_id" in query:
+                return self.character_repo.find_by_id(query["_character_id"])  # type: ignore
+            else:
+                # Generic find
+                return self.database.characters.find_one(query)  # type: ignore
+        except Exception as e:
+            print(f"Failed to find character: {e}")
+            return None
+
+
+class MongoDBConnection:
+    """
+    MongoDB connection manager with connection pooling and error handling.
+    """
+
+    def __init__(self, uri: str, database: str):
+        self.uri = uri
+        self.database_name = database
+        self.client = None
+        self.database = None
+
+    def connect(self) -> bool:
+        """
+        Establish connection to MongoDB.
+
+        Returns:
+            True if connection successful
+        """
+        try:
+            self.client = MongoClient(self.uri, serverSelectionTimeoutMS=5000)
+            # Test connection
+            self.client.server_info()
+            self.database = self.client[self.database_name]
+            return True
+        except Exception as e:
+            print(f"MongoDB connection failed: {e}")
+            return False
+
+    def disconnect(self):
+        """Close MongoDB connection."""
+        if self.client:
+            self.client.close()
+            self.client = None
+            self.database = None
+
+    def is_connected(self) -> bool:
+        """Check if connection is active."""
+        try:
+            if self.client:
+                self.client.server_info()
+                return True
+        except:
+            pass
+        return False
+
+
+class CharacterRepository:
+    """
+    Repository for character data operations.
+    """
+
+    def __init__(self, database):
+        self.collection = database["characters"]
+        self._ensure_indexes()
+
+    def _ensure_indexes(self):
+        """Create necessary indexes for performance."""
+        try:
+            self.collection.create_index([("_character_id", 1)], unique=True)
+            self.collection.create_index([("name", 1), ("anime_name", 1)])
+            self.collection.create_index([("_search_text", "text")])
+            self.collection.create_index([("anime_name", 1)])
+            self.collection.create_index([("quality_score", -1)])
+        except Exception:
+            pass  # Indexes might already exist
+
+    def insert(self, character_data: dict) -> str:
+        """Insert new character."""
+        result = self.collection.insert_one(character_data)
+        return str(result.inserted_id)
+
+    def find_by_id(self, character_id: str) -> Optional[dict]:
+        """Find character by ID."""
+        return self.collection.find_one({"_character_id": character_id})
+
+    def find_by_name_and_anime(self, name: str, anime_name: str) -> Optional[dict]:
+        """Find character by name and anime."""
+        return self.collection.find_one({"name": name, "anime_name": anime_name})
+
+    def update(self, character_id: str, update_data: dict) -> bool:
+        """Update character data."""
+        result = self.collection.update_one(
+            {"_character_id": character_id}, {"$set": update_data}
+        )
+        return result.modified_count > 0
+
+    def delete(self, character_id: str) -> bool:
+        """Delete character."""
+        result = self.collection.delete_one({"_character_id": character_id})
+        return result.deleted_count > 0
+
+    def find_by_anime(self, anime_name: str, limit: int = None) -> list:  # type: ignore
+        """Find all characters from specific anime."""
+        cursor = self.collection.find({"anime_name": anime_name})
+        if limit:
+            cursor = cursor.limit(limit)
+        return list(cursor)
+
+    def search(self, query: str, limit: int = 20) -> list:
+        """Full-text search for characters."""
+        return list(self.collection.find({"$text": {"$search": query}}).limit(limit))
+
+
+class AnimeRepository:
+    """
+    Repository for anime series data operations.
+    """
+
+    def __init__(self, database):
+        self.collection = database["anime_series"]
+        self._ensure_indexes()
+
+    def _ensure_indexes(self):
+        """Create necessary indexes."""
+        try:
+            self.collection.create_index([("title", 1)], unique=True)
+            self.collection.create_index([("fandom_url", 1)])
+        except Exception:
+            pass
+
+    def insert(self, anime_data: dict) -> str:
+        """Insert new anime series."""
+        result = self.collection.insert_one(anime_data)
+        return str(result.inserted_id)
+
+    def find_by_title(self, title: str) -> Optional[dict]:
+        """Find anime by title."""
+        return self.collection.find_one({"title": title})
+
+    def update(self, title: str, update_data: dict) -> bool:
+        """Update anime data."""
+        result = self.collection.update_one({"title": title}, {"$set": update_data})
+        return result.modified_count > 0
 
 
 def create_database_manager(
