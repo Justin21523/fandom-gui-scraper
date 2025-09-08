@@ -23,10 +23,10 @@ from scrapy.pipelines.images import ImagesPipeline
 from scrapy.http import Request
 from itemadapter import ItemAdapter
 
-from ..models.document import AnimeCharacter
-from ..models.storage import DatabaseManager
-from ..utils.normalizer import DataNormalizer
-from ..utils.logger import get_logger
+from models.document import AnimeCharacter
+from models.storage import DatabaseManager
+from utils.normalizer import DataNormalizer
+from utils.logger import get_logger
 
 
 class DataValidationPipeline:

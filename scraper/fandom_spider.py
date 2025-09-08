@@ -15,10 +15,10 @@ from urllib.parse import urljoin, urlparse
 from scrapy.http import Response, Request
 from scrapy.exceptions import CloseSpider
 
-from .base_spider import BaseSpider, FandomSpiderMixin
-from ..utils.selectors import SelectorManager
-from ..utils.normalizer import DataNormalizer
-from ..models.document import AnimeCharacter
+from scraper.base_spider import BaseSpider, FandomSpiderMixin
+from utils.selectors import SelectorManager
+from utils.normalizer import DataNormalizer
+from models.document import AnimeCharacter
 
 
 class FandomSpider(BaseSpider, FandomSpiderMixin):

@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Any, Generator
 from urllib.parse import urljoin
 from scrapy.http import Response
 
-from .fandom_spider import FandomSpider
+from scraper.fandom_spider import FandomSpider
 
 
 class OnePieceSpider(FandomSpider):

@@ -8,7 +8,7 @@ for different scenarios and use cases.
 
 import sys
 import asyncio
-from time import time
+import time
 from pathlib import Path
 
 # Add project root to path

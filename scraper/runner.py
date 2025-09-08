@@ -21,11 +21,11 @@ from scrapy.crawler import CrawlerProcess, CrawlerRunner
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
 
-from .fandom_spider import FandomSpider
-from .onepiece_spider import OnePieceSpider
-from .settings import get_settings_for_environment, validate_settings
-from ..utils.logger import get_logger
-from ..models.storage import DatabaseManager
+from scraper.fandom_spider import FandomSpider
+from scraper.onepiece_spider import OnePieceSpider
+from scraper.settings import get_settings_for_environment, validate_settings
+from utils.logger import get_logger
+from models.storage import DatabaseManager
 
 
 class SpiderRunner:
