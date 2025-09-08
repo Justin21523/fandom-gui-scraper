@@ -1,3 +1,4 @@
+# gui/widgets/progress_dialog.py
 """
 Progress dialog widget for displaying scraping progress and status.
 
@@ -10,13 +11,22 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QProgressBar, QTextEdit, QFrame, QSizePolicy, QScrollArea,
-    QWidget, QGroupBox, QGridLayout, QSpacerItem
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QProgressBar,
+    QTextEdit,
+    QFrame,
+    QSizePolicy,
+    QScrollArea,
+    QWidget,
+    QGroupBox,
+    QGridLayout,
+    QSpacerItem,
 )
-from PyQt5.QtCore import (
-    QThread, QTimer, pyqtSignal, pyqtSlot, Qt, QMutex, QMutexLocker
-)
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot, Qt, QMutex, QMutexLocker
 from PyQt5.QtGui import QFont, QPixmap, QMovie, QPalette, QColor
 
 from utils.logger import get_logger
@@ -72,15 +82,15 @@ class ProgressDialog(QDialog):
 
         # Statistics tracking
         self.statistics = {
-            'characters_scraped': 0,
-            'images_downloaded': 0,
-            'pages_processed': 0,
-            'data_validated': 0,
-            'errors_encountered': 0,
-            'duplicate_items': 0,
-            'processing_rate': 0.0,  # items per second
-            'success_rate': 0.0,     # percentage
-            'average_response_time': 0.0  # seconds
+            "characters_scraped": 0,
+            "images_downloaded": 0,
+            "pages_processed": 0,
+            "data_validated": 0,
+            "errors_encountered": 0,
+            "duplicate_items": 0,
+            "processing_rate": 0.0,  # items per second
+            "success_rate": 0.0,  # percentage
+            "average_response_time": 0.0,  # seconds
         }
 
         # Thread safety
@@ -239,46 +249,46 @@ class ProgressDialog(QDialog):
 
         # Row 0: Counts
         layout.addWidget(QLabel("Characters:"), 0, 0)
-        self.stats_labels['characters'] = QLabel("0")
-        self.stats_labels['characters'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['characters'], 0, 1)
+        self.stats_labels["characters"] = QLabel("0")
+        self.stats_labels["characters"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["characters"], 0, 1)
 
         layout.addWidget(QLabel("Images:"), 0, 2)
-        self.stats_labels['images'] = QLabel("0")
-        self.stats_labels['images'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['images'], 0, 3)
+        self.stats_labels["images"] = QLabel("0")
+        self.stats_labels["images"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["images"], 0, 3)
 
         layout.addWidget(QLabel("Pages:"), 0, 4)
-        self.stats_labels['pages'] = QLabel("0")
-        self.stats_labels['pages'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['pages'], 0, 5)
+        self.stats_labels["pages"] = QLabel("0")
+        self.stats_labels["pages"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["pages"], 0, 5)
 
         # Row 1: Rates and percentages
         layout.addWidget(QLabel("Success Rate:"), 1, 0)
-        self.stats_labels['success_rate'] = QLabel("0%")
-        self.stats_labels['success_rate'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['success_rate'], 1, 1)
+        self.stats_labels["success_rate"] = QLabel("0%")
+        self.stats_labels["success_rate"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["success_rate"], 1, 1)
 
         layout.addWidget(QLabel("Processing Rate:"), 1, 2)
-        self.stats_labels['processing_rate'] = QLabel("0/s")
-        self.stats_labels['processing_rate'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['processing_rate'], 1, 3)
+        self.stats_labels["processing_rate"] = QLabel("0/s")
+        self.stats_labels["processing_rate"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["processing_rate"], 1, 3)
 
         layout.addWidget(QLabel("Errors:"), 1, 4)
-        self.stats_labels['errors'] = QLabel("0")
-        self.stats_labels['errors'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['errors'], 1, 5)
+        self.stats_labels["errors"] = QLabel("0")
+        self.stats_labels["errors"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["errors"], 1, 5)
 
         # Row 2: Response time and duplicates
         layout.addWidget(QLabel("Avg Response:"), 2, 0)
-        self.stats_labels['response_time'] = QLabel("0ms")
-        self.stats_labels['response_time'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['response_time'], 2, 1)
+        self.stats_labels["response_time"] = QLabel("0ms")
+        self.stats_labels["response_time"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["response_time"], 2, 1)
 
         layout.addWidget(QLabel("Duplicates:"), 2, 2)
-        self.stats_labels['duplicates'] = QLabel("0")
-        self.stats_labels['duplicates'].setFont(QFont("Arial", 10, QFont.Bold))
-        layout.addWidget(self.stats_labels['duplicates'], 2, 3)
+        self.stats_labels["duplicates"] = QLabel("0")
+        self.stats_labels["duplicates"].setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(self.stats_labels["duplicates"], 2, 3)
 
         # Add frame layout
         frame_layout = QVBoxLayout(frame)
@@ -306,14 +316,16 @@ class ProgressDialog(QDialog):
         self.log_text.setFont(QFont("Consolas", 9))
 
         # Set up log formatting
-        self.log_text.setStyleSheet("""
+        self.log_text.setStyleSheet(
+            """
             QTextEdit {
                 background-color: #1e1e1e;
                 color: #ffffff;
                 border: 1px solid #555555;
                 padding: 5px;
             }
-        """)
+        """
+        )
 
         layout.addWidget(self.log_text)
 
@@ -485,7 +497,7 @@ class ProgressDialog(QDialog):
         self.add_log_message(f"Started: {operation_name}", "INFO")
         self.logger.info(f"Operation started: {operation_name}")
 
-    def update_overall_progress(self, completed: int, total: int = None, message: str = ""): # type: ignore
+    def update_overall_progress(self, completed: int, total: int = None, message: str = ""):  # type: ignore
         """
         Update overall progress.
 
@@ -521,7 +533,9 @@ class ProgressDialog(QDialog):
         if message:
             self.task_status.setText(message)
 
-    def update_subtask_progress(self, progress: int, total: int = 100, message: str = "", visible: bool = True):
+    def update_subtask_progress(
+        self, progress: int, total: int = 100, message: str = "", visible: bool = True
+    ):
         """
         Update sub-task progress.
 
@@ -567,11 +581,13 @@ class ProgressDialog(QDialog):
             "WARNING": "#ffc107",
             "ERROR": "#dc3545",
             "DEBUG": "#6c757d",
-            "SUCCESS": "#28a745"
+            "SUCCESS": "#28a745",
         }
 
         color = color_map.get(level, "#ffffff")
-        formatted_message = f'<span style="color: {color}">[{timestamp}] {level}: {message}</span>'
+        formatted_message = (
+            f'<span style="color: {color}">[{timestamp}] {level}: {message}</span>'
+        )
 
         self.log_text.append(formatted_message)
 
@@ -596,10 +612,14 @@ class ProgressDialog(QDialog):
 
         if success:
             self.overall_status.setText("Completed successfully")
-            self.add_log_message(message or "Operation completed successfully", "SUCCESS")
+            self.add_log_message(
+                message or "Operation completed successfully", "SUCCESS"
+            )
         else:
             self.overall_status.setText("Completed with errors")
-            self.add_log_message(message or "Operation completed with errors", "WARNING")
+            self.add_log_message(
+                message or "Operation completed with errors", "WARNING"
+            )
 
         self.logger.info(f"Operation completed - Success: {success}")
 
@@ -630,7 +650,7 @@ class ProgressDialog(QDialog):
 
         # Calculate elapsed time
         elapsed = datetime.now() - self.start_time
-        elapsed_str = str(elapsed).split('.')[0]  # Remove microseconds
+        elapsed_str = str(elapsed).split(".")[0]  # Remove microseconds
         self.elapsed_time_label.setText(f"Elapsed: {elapsed_str}")
 
         # Calculate ETA if we have progress data
@@ -645,7 +665,7 @@ class ProgressDialog(QDialog):
                     self.eta_label.setText(f"ETA: {eta_time.strftime('%H:%M:%S')}")
 
                 # Update processing rate
-                self.statistics['processing_rate'] = items_per_second
+                self.statistics["processing_rate"] = items_per_second
 
         # Update statistics display
         self.update_statistics_display()
@@ -655,16 +675,20 @@ class ProgressDialog(QDialog):
         with QMutexLocker(self.mutex):
             stats = self.statistics.copy()
 
-        self.stats_labels['characters'].setText(str(stats['characters_scraped']))
-        self.stats_labels['images'].setText(str(stats['images_downloaded']))
-        self.stats_labels['pages'].setText(str(stats['pages_processed']))
-        self.stats_labels['errors'].setText(str(stats['errors_encountered']))
-        self.stats_labels['duplicates'].setText(str(stats['duplicate_items']))
+        self.stats_labels["characters"].setText(str(stats["characters_scraped"]))
+        self.stats_labels["images"].setText(str(stats["images_downloaded"]))
+        self.stats_labels["pages"].setText(str(stats["pages_processed"]))
+        self.stats_labels["errors"].setText(str(stats["errors_encountered"]))
+        self.stats_labels["duplicates"].setText(str(stats["duplicate_items"]))
 
         # Format rates and percentages
-        self.stats_labels['processing_rate'].setText(f"{stats['processing_rate']:.1f}/s")
-        self.stats_labels['success_rate'].setText(f"{stats['success_rate']:.1f}%")
-        self.stats_labels['response_time'].setText(f"{stats['average_response_time']:.0f}ms")
+        self.stats_labels["processing_rate"].setText(
+            f"{stats['processing_rate']:.1f}/s"
+        )
+        self.stats_labels["success_rate"].setText(f"{stats['success_rate']:.1f}%")
+        self.stats_labels["response_time"].setText(
+            f"{stats['average_response_time']:.0f}ms"
+        )
 
     @pyqtSlot()
     def toggle_pause(self):
@@ -730,4 +754,3 @@ class ProgressDialog(QDialog):
         self.update_timer.stop()
 
         super().closeEvent(event)
-            '
