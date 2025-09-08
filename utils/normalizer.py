@@ -34,12 +34,59 @@ class DataNormalizer:
     def __init__(self):
         """Initialize the data normalizer with common patterns."""
         # Common patterns for text cleaning
+        self.text_patterns = {
+            "extra_whitespace": re.compile(r"\s+"),
+            "html_tags": re.compile(r"<[^>]+>"),
+            "brackets": re.compile(r"\[.*?\]|\(.*?\)"),
+            "quotes": re.compile(r'[""' "`]"),
+            "special_chars": re.compile(r"[^\w\s\-.,!?]"),
+        }
         self.citation_pattern = re.compile(r"\[[\d\w\s,]+\]")
         self.extra_whitespace_pattern = re.compile(r"\s+")
         self.parentheses_pattern = re.compile(r"\(\s*\)")
         self.brackets_pattern = re.compile(r"\[\s*\]")
         self.wiki_markup_pattern = re.compile(r"\{\{[^}]*\}\}")
         self.html_tag_pattern = re.compile(r"<[^>]+>")
+
+        # Field name mappings for standardization
+        self.field_mappings = {
+            # Basic info
+            "full name": "name",
+            "character name": "name",
+            "real name": "name",
+            "birth name": "name",
+            # Age variations
+            "age": "age",
+            "current age": "age",
+            "years old": "age",
+            # Gender variations
+            "gender": "gender",
+            "sex": "gender",
+            # Status variations
+            "status": "status",
+            "alive/dead": "status",
+            "current status": "status",
+            # Occupation variations
+            "occupation": "occupation",
+            "job": "occupation",
+            "profession": "occupation",
+            "role": "occupation",
+            "position": "occupation",
+            # One Piece specific
+            "epithet": "epithet",
+            "nickname": "epithet",
+            "alias": "epithet",
+            "bounty": "bounty",
+            "reward": "bounty",
+            "devil fruit": "devil_fruit",
+            "df": "devil_fruit",
+            "crew": "crew",
+            "pirate crew": "crew",
+            "affiliation": "crew",
+            "height": "height",
+            "birthday": "birthday",
+            "birth date": "birthday",
+        }
 
         # URL patterns
         self.relative_url_pattern = re.compile(r"^/")
@@ -153,49 +200,6 @@ class DataNormalizer:
 
         return cleaned.strip()
 
-    def normalize_age(self, age: str) -> str:
-        """
-        Normalize age information to consistent format.
-
-        Args:
-            age: Age string to normalize
-
-        Returns:
-            Normalized age string
-        """
-        if not age:
-            return "Unknown"
-
-        cleaned = self.clean_text(age)
-
-        # Handle special cases
-        special_ages = {
-            "unknown": "Unknown",
-            "immortal": "Immortal",
-            "ageless": "Ageless",
-            "deceased": "Deceased",
-            "varies": "Varies",
-        }
-
-        cleaned_lower = cleaned.lower()
-        for key, value in special_ages.items():
-            if key in cleaned_lower:
-                return value
-
-        # Extract age ranges
-        range_match = self.age_range_pattern.search(cleaned)
-        if range_match:
-            start_age, end_age = range_match.groups()
-            return f"{start_age}-{end_age}"
-
-        # Extract single age number
-        number_match = self.age_number_pattern.search(cleaned)
-        if number_match:
-            return number_match.group(1)
-
-        return "Unknown"
-
-    def normalize_gender(self, gender: str) -> str:
         """
         Normalize gender information.
 
@@ -507,6 +511,424 @@ class DataNormalizer:
         # Normalize score
         return min(score / max_score, 1.0) if max_score > 0 else 0.0
 
+    def normalize_character_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize complete character data dictionary.
+
+        Args:
+            data: Raw character data
+
+        Returns:
+            Normalized character data
+        """
+        normalized = {}
+
+        # Normalize each field
+        for key, value in data.items():
+            normalized_key = self.normalize_field_name(key)
+            normalized_value = self.normalize_field_value(normalized_key, value)
+
+            if normalized_value is not None:
+                normalized[normalized_key] = normalized_value
+
+        # Apply post-processing
+        normalized = self._post_process_character_data(normalized)
+
+        return normalized
+
+    def normalize_field_name(self, field_name: str) -> str:
+        """
+        Normalize field name to standard format.
+
+        Args:
+            field_name: Original field name
+
+        Returns:
+            Normalized field name
+        """
+        if not field_name:
+            return field_name
+
+        # Convert to lowercase and clean
+        cleaned = field_name.lower().strip()
+        cleaned = re.sub(r"[^\w\s]", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned)
+
+        # Check for direct mapping
+        if cleaned in self.field_mappings:
+            return self.field_mappings[cleaned]
+
+        # Check for partial matches
+        for pattern, standard_name in self.field_mappings.items():
+            if pattern in cleaned or cleaned in pattern:
+                return standard_name
+
+        # Convert to snake_case
+        snake_case = re.sub(r"\s+", "_", cleaned)
+
+        return snake_case
+
+    def normalize_field_value(self, field_name: str, value: Any) -> Any:
+        """
+        Normalize field value based on field type.
+
+        Args:
+            field_name: Normalized field name
+            value: Raw field value
+
+        Returns:
+            Normalized field value
+        """
+        if value is None:
+            return None
+
+        # Handle different field types
+        if field_name in ["name", "anime_name"]:
+            return self.normalize_text(value, preserve_case=True)
+
+        elif field_name in ["description"]:
+            return self.normalize_description(value)
+
+        elif field_name in ["age"]:
+            return self.normalize_age(value)
+
+        elif field_name in ["gender"]:
+            return self.normalize_gender(value)
+
+        elif field_name in ["status"]:
+            return self.normalize_status(value)
+
+        elif field_name in ["bounty"]:
+            return self.normalize_bounty(value)
+
+        elif field_name in ["height"]:
+            return self.normalize_height(value)
+
+        elif field_name in ["epithet", "occupation"]:
+            return self.normalize_text(value, preserve_case=True)
+
+        elif isinstance(value, list):
+            return self.normalize_list(value)
+
+        elif isinstance(value, str):
+            return self.normalize_text(value)
+
+        else:
+            return value
+
+    def normalize_text(self, text: str, preserve_case: bool = False) -> Optional[str]:
+        """
+        Normalize text content.
+
+        Args:
+            text: Raw text
+            preserve_case: Whether to preserve original case
+
+        Returns:
+            Normalized text or None if empty
+        """
+        if not text:
+            return None
+
+        # Convert to string if not already
+        text = str(text)
+
+        # Remove HTML tags
+        text = self.text_patterns["html_tags"].sub("", text)
+
+        # Clean quotes
+        text = self.text_patterns["quotes"].sub('"', text)
+
+        # Normalize whitespace
+        text = self.text_patterns["extra_whitespace"].sub(" ", text)
+
+        # Trim
+        text = text.strip()
+
+        # Apply case normalization if needed
+        if not preserve_case:
+            text = text.lower()
+
+        return text if text else None
+
+    def normalize_description(self, description: str) -> Optional[str]:
+        """
+        Normalize character description.
+
+        Args:
+            description: Raw description
+
+        Returns:
+            Normalized description
+        """
+        if not description:
+            return None
+
+        desc = self.normalize_text(description, preserve_case=True)
+
+        if not desc:
+            return None
+
+        # Remove common prefixes
+        prefixes_to_remove = [
+            "is a character",
+            "is a fictional character",
+            "character from",
+            "appears in",
+        ]
+
+        desc_lower = desc.lower()
+        for prefix in prefixes_to_remove:
+            if desc_lower.startswith(prefix):
+                desc = desc[len(prefix) :].strip()
+                break
+
+        # Capitalize first letter
+        if desc:
+            desc = desc[0].upper() + desc[1:]
+
+        return desc
+
+    def normalize_age(self, age: str) -> Optional[str]:
+        """
+        Normalize age information.
+
+        Args:
+            age: Raw age string
+
+        Returns:
+            Normalized age string
+        """
+        if not age:
+            return None
+
+        age_str = str(age).strip().lower()
+
+        # Remove common suffixes
+        age_str = re.sub(r"\s*(years?\s*old|yrs?\.?|y\.?o\.?)\s*$", "", age_str)
+
+        # Extract numbers and ranges
+        age_match = re.search(r"(\d+(?:\s*-\s*\d+)?)", age_str)
+        if age_match:
+            return age_match.group(1).replace(" ", "")
+
+        # Handle special cases
+        if any(word in age_str for word in ["unknown", "n/a", "none", "?"]):
+            return None
+
+        if any(word in age_str for word in ["child", "kid", "young"]):
+            return "child"
+
+        if any(word in age_str for word in ["adult", "grown"]):
+            return "adult"
+
+        return age_str if age_str else None
+
+    def normalize_gender(self, gender: str) -> Optional[str]:
+        """
+        Normalize gender information.
+
+        Args:
+            gender: Raw gender string
+
+        Returns:
+            Normalized gender
+        """
+        if not gender:
+            return None
+
+        gender_lower = str(gender).strip().lower()
+
+        # Gender mappings
+        gender_map = {
+            "male": "male",
+            "man": "male",
+            "boy": "male",
+            "m": "male",
+            "female": "female",
+            "woman": "female",
+            "girl": "female",
+            "f": "female",
+            "unknown": None,
+            "n/a": None,
+            "none": None,
+            "?": None,
+        }
+
+        return gender_map.get(gender_lower, gender_lower)
+
+    def normalize_status(self, status: str) -> Optional[str]:
+        """
+        Normalize character status.
+
+        Args:
+            status: Raw status string
+
+        Returns:
+            Normalized status
+        """
+        if not status:
+            return None
+
+        status_lower = str(status).strip().lower()
+
+        # Status mappings
+        status_map = {
+            "alive": "alive",
+            "living": "alive",
+            "active": "alive",
+            "dead": "deceased",
+            "deceased": "deceased",
+            "killed": "deceased",
+            "died": "deceased",
+            "unknown": "unknown",
+            "n/a": "unknown",
+            "none": "unknown",
+            "?": "unknown",
+            "missing": "missing",
+            "disappeared": "missing",
+        }
+
+        return status_map.get(status_lower, status_lower)
+
+    def normalize_bounty(self, bounty: str) -> Optional[str]:
+        """
+        Normalize bounty information.
+
+        Args:
+            bounty: Raw bounty string
+
+        Returns:
+            Normalized bounty string
+        """
+        if not bounty:
+            return None
+
+        bounty_str = str(bounty).strip()
+
+        # Remove currency symbols and common prefixes
+        bounty_str = re.sub(
+            r"^(bounty:?\s*|reward:?\s*)", "", bounty_str, flags=re.IGNORECASE
+        )
+        bounty_str = re.sub(r"[฿$,]", "", bounty_str)
+
+        # Extract numbers
+        number_match = re.search(r"(\d+(?:\.\d+)?)", bounty_str)
+        if number_match:
+            number = number_match.group(1)
+
+            # Handle units
+            if any(unit in bounty_str.lower() for unit in ["billion", "b"]):
+                return f"{number} billion"
+            elif any(unit in bounty_str.lower() for unit in ["million", "m"]):
+                return f"{number} million"
+            else:
+                return number
+
+        # Handle special cases
+        if any(word in bounty_str.lower() for word in ["none", "n/a", "unknown", "0"]):
+            return None
+
+        return bounty_str
+
+    def normalize_height(self, height: str) -> Optional[str]:
+        """
+        Normalize height information.
+
+        Args:
+            height: Raw height string
+
+        Returns:
+            Normalized height string
+        """
+        if not height:
+            return None
+
+        height_str = str(height).strip()
+
+        # Extract height with units
+        height_match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(cm|m|ft|in|feet|inches)", height_str, re.IGNORECASE
+        )
+        if height_match:
+            value = height_match.group(1)
+            unit = height_match.group(2).lower()
+
+            # Normalize units
+            if unit in ["cm"]:
+                return f"{value} cm"
+            elif unit in ["m"]:
+                return f"{value} m"
+            elif unit in ["ft", "feet"]:
+                return f"{value} ft"
+            elif unit in ["in", "inches"]:
+                return f"{value} in"
+
+        return height_str
+
+    def normalize_list(self, items: List[Any]) -> List[Any]:
+        """
+        Normalize list of items.
+
+        Args:
+            items: List of raw items
+
+        Returns:
+            List of normalized items
+        """
+        if not items:
+            return []
+
+        normalized_items = []
+        for item in items:
+            if isinstance(item, str):
+                normalized_item = self.normalize_text(item, preserve_case=True)
+                if normalized_item:
+                    normalized_items.append(normalized_item)
+            elif item is not None:
+                normalized_items.append(item)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_items = []
+        for item in normalized_items:
+            if item not in seen:
+                seen.add(item)
+                unique_items.append(item)
+
+        return unique_items
+
+    def _post_process_character_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Apply post-processing to character data.
+
+        Args:
+            data: Normalized character data
+
+        Returns:
+            Post-processed character data
+        """
+        # Ensure required fields exist
+        if "name" not in data or not data["name"]:
+            data["name"] = "Unknown Character"
+
+        if "anime_name" not in data or not data["anime_name"]:
+            data["anime_name"] = "Unknown Anime"
+
+        # Clean up empty lists
+        list_fields = ["images", "relationships", "abilities", "appearances"]
+        for field in list_fields:
+            if field in data and not data[field]:
+                data[field] = []
+
+        # Ensure timestamps
+        if "extraction_date" not in data:
+            from datetime import datetime, timezone
+
+            data["extraction_date"] = datetime.now(timezone.utc).isoformat()
+
+        return data
+
 
 # Global normalizer instance
 _normalizer: Optional[DataNormalizer] = None
@@ -540,12 +962,12 @@ def clean_character_name(name: str) -> str:
 
 def normalize_age(age: str) -> str:
     """Normalize age using the global normalizer."""
-    return get_normalizer().normalize_age(age)
+    return get_normalizer().normalize_age(age)  # type: ignore
 
 
 def normalize_gender(gender: str) -> str:
     """Normalize gender using the global normalizer."""
-    return get_normalizer().normalize_gender(gender)
+    return get_normalizer().normalize_gender(gender)  # type: ignore
 
 
 def normalize_url(url: str, base_url: str = None) -> str:  # type: ignore
