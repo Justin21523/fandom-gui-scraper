@@ -325,6 +325,9 @@ class SelectorManager:
             FileNotFoundError: If configuration file not found
             ValueError: If configuration is invalid
         """
+        # Convert anime name to config file name
+        config_name = self._normalize_config_name(anime_name)
+
         # Normalize anime name
         anime_key = anime_name.lower().replace(" ", "").replace("-", "")
 
@@ -366,6 +369,116 @@ class SelectorManager:
         except Exception as e:
             logger.error(f"Failed to load selector configuration for {anime_name}: {e}")
             raise ValueError(f"Invalid configuration for {anime_name}: {e}")
+
+    def _normalize_config_name(self, anime_name: str) -> str:
+        """
+        Normalize anime name to config file name.
+
+        Args:
+            anime_name: Original anime name
+
+        Returns:
+            Normalized config name
+        """
+        import re
+
+        normalized = anime_name.lower()
+        normalized = re.sub(r"[^\w\s]", "", normalized)
+        normalized = re.sub(r"\s+", "_", normalized)
+        return normalized
+
+    def _load_config_file(self, config_file: Path) -> Dict[str, str]:
+        """
+        Load selector configuration from JSON file.
+
+        Args:
+            config_file: Path to config file
+
+        Returns:
+            Selector configuration dictionary
+        """
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Failed to load selector config {config_file}: {e}")
+            return self._get_default_selectors()
+
+    def _save_config(self, config_name: str, selectors: Dict[str, str]):
+        """
+        Save selector configuration to file.
+
+        Args:
+            config_name: Configuration name
+            selectors: Selector dictionary
+        """
+        config_file = self.config_dir / f"{config_name}.json"
+
+        try:
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(selectors, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Failed to save selector config {config_file}: {e}")
+
+    def _get_default_selectors(self) -> Dict[str, str]:
+        """
+        Get minimal default selectors as fallback.
+
+        Returns:
+            Default selector dictionary
+        """
+        return {
+            "character_name": "h1::text, .page-title::text",
+            "character_description": "p:first-of-type::text",
+            "character_images": "img::attr(src)",
+            "category_member_links": "a[href*='/wiki/']::attr(href)",
+        }
+
+    def add_custom_selectors(self, anime_name: str, selectors: Dict[str, str]) -> bool:
+        """
+        Add custom selectors for an anime.
+
+        Args:
+            anime_name: Anime name
+            selectors: Custom selector mappings
+
+        Returns:
+            True if selectors were saved successfully
+        """
+        config_name = self._normalize_config_name(anime_name)
+
+        try:
+            # Load existing selectors or use generic as base
+            existing_selectors = self.get_selectors(anime_name)
+
+            # Merge with custom selectors
+            existing_selectors.update(selectors)
+
+            # Save updated configuration
+            self._save_config(config_name, existing_selectors)
+
+            # Update cache
+            self.cache[config_name] = existing_selectors
+
+            return True
+        except Exception as e:
+            print(f"Failed to add custom selectors for {anime_name}: {e}")
+            return False
+
+    def get_available_configs(self) -> List[str]:
+        """
+        Get list of available selector configurations.
+
+        Returns:
+            List of available config names
+        """
+        configs = []
+
+        for config_file in self.config_dir.glob("*.json"):
+            config_name = config_file.stem
+            configs.append(config_name)
+
+        return sorted(configs)
 
     def _load_base_config(self, base_name: str) -> Dict[str, Any]:
         """
