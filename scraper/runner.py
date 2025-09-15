@@ -1,586 +1,596 @@
 # scraper/runner.py
 """
-Scrapy Spider Runner
+Scrapy spider runner and management utilities.
 
-This module provides a high-level interface for running Fandom spiders
-with proper configuration and monitoring capabilities.
+This module provides utilities to run spiders programmatically,
+manage spider processes, and handle concurrent spider execution.
 """
 
 import os
 import sys
-import time
 import signal
 import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, Callable, List
-from multiprocessing import Process, Queue
-from datetime import datetime
-
-from twisted.internet import reactor, defer
+import threading
+from typing import Dict, List, Optional, Callable, Any
+from multiprocessing import Process, Queue, Event
 from scrapy.crawler import CrawlerProcess, CrawlerRunner
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
+from twisted.internet import reactor, defer
+from twisted.internet.defer import inlineCallbacks
 
-from scraper.fandom_spider import FandomSpider
-from scraper.onepiece_spider import OnePieceSpider
-from scraper.settings import get_settings_for_environment, validate_settings
-from utils.logger import get_logger
-from models.storage import DatabaseManager
+logger = logging.getLogger(__name__)
 
 
 class SpiderRunner:
     """
-    High-level spider runner with monitoring and control capabilities.
+    Run Scrapy spiders programmatically with configuration options.
 
-    This class provides:
-    - Easy spider execution with custom parameters
-    - Progress monitoring and callbacks
-    - Error handling and recovery
-    - Statistics collection and reporting
-    - Graceful shutdown handling
+    This class provides a high-level interface for running spiders
+    with custom settings and monitoring capabilities.
     """
 
-    def __init__(self, environment: str = "development"):
+    def __init__(
+        self, settings: Optional[Dict[str, Any]] = None, log_level: str = "INFO"
+    ):
         """
         Initialize spider runner.
 
         Args:
-            environment: Environment name ('development', 'production', 'testing')
+            settings: Custom Scrapy settings
+            log_level: Logging level
         """
-        self.environment = environment
-        self.logger = get_logger(self.__class__.__name__)
-
-        # Get and validate settings
-        self.settings = get_settings_for_environment(environment)
-        validate_settings()
-
-        # Initialize components
-        self.crawler_process = None
-        self.current_spider = None
+        self.custom_settings = settings or {}
+        self.log_level = log_level
+        self.runner = None
+        self.process = None
         self.is_running = False
-        self.start_time = None
-        self.stats = {}
 
-        # Callbacks
-        self.progress_callback = None
-        self.completion_callback = None
-        self.error_callback = None
+        # Setup logging
+        configure_logging({"LOG_LEVEL": log_level})
 
-        # Setup signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+    def get_spider_settings(self) -> Dict[str, Any]:
+        """
+        Get combined Scrapy settings.
 
-        self.logger.info(f"Spider runner initialized for {environment} environment")
+        Returns:
+            Dictionary of settings
+        """
+        # Start with project settings
+        settings = get_project_settings()
+
+        # Apply custom settings
+        for key, value in self.custom_settings.items():
+            settings.set(key, value)
+
+        # Ensure log level is set
+        settings.set("LOG_LEVEL", self.log_level)
+
+        return settings  # type: ignore
 
     def run_spider(
         self,
         spider_name: str,
-        anime_name: str = None,  # type: ignore
-        max_characters: int = None,  # type: ignore
-        **kwargs,
+        spider_kwargs: Optional[Dict[str, Any]] = None,
+        blocking: bool = True,
+    ) -> Optional[defer.Deferred]:
+        """
+        Run a single spider.
+
+        Args:
+            spider_name: Name of the spider to run
+            spider_kwargs: Additional arguments for the spider
+            blocking: Whether to block until completion
+
+        Returns:
+            Deferred object if non-blocking, None if blocking
+        """
+        spider_kwargs = spider_kwargs or {}
+
+        if blocking:
+            return self._run_spider_blocking(spider_name, spider_kwargs)
+        else:
+            return self._run_spider_non_blocking(spider_name, spider_kwargs)
+
+    def _run_spider_blocking(self, spider_name: str, spider_kwargs: Dict[str, Any]):
+        """Run spider in blocking mode using CrawlerProcess."""
+        try:
+            settings = self.get_spider_settings()
+            self.process = CrawlerProcess(settings)
+
+            self.is_running = True
+            logger.info(f"Starting spider: {spider_name}")
+
+            self.process.crawl(spider_name, **spider_kwargs)
+            self.process.start()  # This blocks until completion
+
+        except Exception as e:
+            logger.error(f"Error running spider {spider_name}: {e}")
+            raise
+        finally:
+            self.is_running = False
+            logger.info(f"Spider {spider_name} finished")
+
+    @inlineCallbacks
+    def _run_spider_non_blocking(self, spider_name: str, spider_kwargs: Dict[str, Any]):
+        """Run spider in non-blocking mode using CrawlerRunner."""
+        try:
+            settings = self.get_spider_settings()
+
+            if not self.runner:
+                self.runner = CrawlerRunner(settings)
+
+            self.is_running = True
+            logger.info(f"Starting spider: {spider_name}")
+
+            deferred = self.runner.crawl(spider_name, **spider_kwargs)
+            yield deferred
+
+            logger.info(f"Spider {spider_name} finished")
+
+        except Exception as e:
+            logger.error(f"Error running spider {spider_name}: {e}")
+            raise
+        finally:
+            self.is_running = False
+
+    def stop_spider(self):
+        """Stop the currently running spider."""
+        if self.is_running:
+            logger.info("Stopping spider...")
+
+            if self.process:
+                self.process.stop()
+
+            if self.runner:
+                self.runner.stop()
+
+            self.is_running = False
+
+
+class MultiSpiderRunner:
+    """
+    Run multiple spiders concurrently or sequentially.
+
+    This class manages the execution of multiple spiders
+    with different scheduling strategies.
+    """
+
+    def __init__(
+        self, settings: Optional[Dict[str, Any]] = None, log_level: str = "INFO"
+    ):
+        """
+        Initialize multi-spider runner.
+
+        Args:
+            settings: Custom Scrapy settings
+            log_level: Logging level
+        """
+        self.settings = settings or {}
+        self.log_level = log_level
+        self.runners = {}
+        self.results = {}
+
+    def run_spiders_sequential(
+        self, spider_configs: List[Dict[str, Any]], stop_on_error: bool = False
     ) -> Dict[str, Any]:
         """
-        Run a specific spider with given parameters.
+        Run spiders sequentially one after another.
 
         Args:
-            spider_name: Name of spider to run ('fandom', 'onepiece', etc.)
-            anime_name: Target anime name
-            max_characters: Maximum characters to scrape
-            **kwargs: Additional spider parameters
+            spider_configs: List of spider configuration dictionaries
+            stop_on_error: Whether to stop if a spider fails
 
         Returns:
-            Execution results and statistics
+            Dictionary with results for each spider
         """
-        self.logger.info(f"Starting spider: {spider_name}")
-        self.logger.info(f"Target anime: {anime_name}")
-        self.logger.info(f"Max characters: {max_characters}")
-
-        try:
-            # Setup spider parameters
-            spider_kwargs = {
-                "anime_name": anime_name,
-                "max_characters": max_characters,
-                "progress_callback": self._progress_update,
-                "data_callback": self._data_received,
-                **kwargs,
-            }
-
-            # Get spider class
-            spider_class = self._get_spider_class(spider_name)
-            if not spider_class:
-                raise ValueError(f"Unknown spider: {spider_name}")
-
-            # Configure logging
-            configure_logging(self.settings)
-
-            # Create crawler process
-            self.crawler_process = CrawlerProcess(self.settings)
-
-            # Add spider to crawler
-            self.crawler_process.crawl(spider_class, **spider_kwargs)
-
-            # Start crawling
-            self.is_running = True
-            self.start_time = datetime.now()
-            self.current_spider = spider_name
-
-            self.logger.info("Starting crawler process...")
-            self.crawler_process.start()  # This blocks until completion
-
-            # Process completed
-            self.is_running = False
-            end_time = datetime.now()
-            duration = (end_time - self.start_time).total_seconds()
-
-            # Collect final statistics
-            final_stats = self._collect_final_stats(duration)
-
-            self.logger.info(f"Spider completed successfully in {duration:.2f} seconds")
-
-            # Call completion callback
-            if self.completion_callback:
-                self.completion_callback(final_stats)
-
-            return final_stats
-
-        except Exception as e:
-            self.is_running = False
-            self.logger.error(f"Spider execution failed: {e}")
-
-            # Call error callback
-            if self.error_callback:
-                self.error_callback(str(e))
-
-            raise
-
-    def run_spider_async(
-        self,
-        spider_name: str,
-        anime_name: str = None,  # type: ignore
-        max_characters: int = None,  # type: ignore
-        **kwargs,
-    ) -> Process:
-        """
-        Run spider in separate process (non-blocking).
-
-        Args:
-            spider_name: Name of spider to run
-            anime_name: Target anime name
-            max_characters: Maximum characters to scrape
-            **kwargs: Additional spider parameters
-
-        Returns:
-            Process object for the running spider
-        """
-        # Create process for spider execution
-        result_queue = Queue()
-
-        def spider_worker():
-            try:
-                result = self.run_spider(
-                    spider_name, anime_name, max_characters, **kwargs
-                )
-                result_queue.put(("success", result))
-            except Exception as e:
-                result_queue.put(("error", str(e)))
-
-        process = Process(target=spider_worker)
-        process.start()
-
-        self.logger.info(f"Spider {spider_name} started in process {process.pid}")
-        return process
-
-    def stop_spider(self, force: bool = False) -> None:
-        """
-        Stop currently running spider.
-
-        Args:
-            force: Whether to force stop immediately
-        """
-        if not self.is_running:
-            self.logger.warning("No spider is currently running")
-            return
-
-        self.logger.info("Stopping spider...")
-
-        try:
-            if force:
-                # Force stop by stopping reactor
-                if reactor and hasattr(reactor, "running") and reactor.running:  # type: ignore
-                    reactor.stop()  # type: ignore
-            else:
-                # Graceful stop
-                if self.crawler_process:
-                    # Send stop signal to crawler
-                    self.crawler_process.stop()
-
-            self.is_running = False
-            self.logger.info("Spider stopped successfully")
-
-        except Exception as e:
-            self.logger.error(f"Error stopping spider: {e}")
-
-    def get_spider_status(self) -> Dict[str, Any]:
-        """
-        Get current spider execution status.
-
-        Returns:
-            Status information dictionary
-        """
-        status = {
-            "is_running": self.is_running,
-            "current_spider": self.current_spider,
-            "environment": self.environment,
-            "start_time": self.start_time.isoformat() if self.start_time else None,
-            "duration": None,
-            "stats": self.stats.copy(),
-        }
-
-        if self.is_running and self.start_time:
-            duration = (datetime.now() - self.start_time).total_seconds()
-            status["duration"] = duration
-
-        return status
-
-    def set_progress_callback(self, callback: Callable[[str, float], None]) -> None:
-        """
-        Set callback function for progress updates.
-
-        Args:
-            callback: Function that accepts (message, progress_percentage)
-        """
-        self.progress_callback = callback
-
-    def set_completion_callback(
-        self, callback: Callable[[Dict[str, Any]], None]
-    ) -> None:
-        """
-        Set callback function for completion notification.
-
-        Args:
-            callback: Function that accepts final statistics
-        """
-        self.completion_callback = callback
-
-    def set_error_callback(self, callback: Callable[[str], None]) -> None:
-        """
-        Set callback function for error notification.
-
-        Args:
-            callback: Function that accepts error message
-        """
-        self.error_callback = callback
-
-    def get_available_spiders(self) -> List[str]:
-        """
-        Get list of available spider names.
-
-        Returns:
-            List of spider names
-        """
-        return ["fandom", "onepiece", "naruto", "dragonball"]
-
-    def validate_spider_config(self, spider_name: str, **kwargs) -> bool:
-        """
-        Validate spider configuration before running.
-
-        Args:
-            spider_name: Name of spider to validate
-            **kwargs: Spider parameters
-
-        Returns:
-            True if configuration is valid
-        """
-        try:
-            # Check if spider exists
-            spider_class = self._get_spider_class(spider_name)
-            if not spider_class:
-                return False
-
-            # Validate required parameters
-            if spider_name in ["fandom", "onepiece"] and not kwargs.get("anime_name"):
-                return False
-
-            # Validate database connection
-            db_manager = DatabaseManager(
-                self.settings["MONGO_URI"], self.settings["MONGO_DATABASE"]
-            )
-            db_manager.connect()
-            db_manager.disconnect()
-
-            return True
-
-        except Exception as e:
-            self.logger.error(f"Configuration validation failed: {e}")
-            return False
-
-    def _get_spider_class(self, spider_name: str):
-        """
-        Get spider class by name.
-
-        Args:
-            spider_name: Name of spider
-
-        Returns:
-            Spider class or None
-        """
-        spider_classes = {
-            "fandom": FandomSpider,
-            "onepiece": OnePieceSpider,
-            # Add more spiders here as they are implemented
-        }
-
-        return spider_classes.get(spider_name)
-
-    def _progress_update(self, message: str, progress: float) -> None:
-        """
-        Handle progress updates from spider.
-
-        Args:
-            message: Progress message
-            progress: Progress percentage (0-100)
-        """
-        self.stats["last_progress"] = progress
-        self.stats["last_message"] = message
-        self.stats["last_update"] = datetime.now().isoformat()
-
-        self.logger.debug(f"Progress: {progress:.1f}% - {message}")
-
-        # Call external progress callback
-        if self.progress_callback:
-            self.progress_callback(message, progress)
-
-    def _data_received(self, data: Dict[str, Any]) -> None:
-        """
-        Handle data received from spider.
-
-        Args:
-            data: Character data received
-        """
-        self.stats["items_scraped"] = self.stats.get("items_scraped", 0) + 1
-        self.stats["last_character"] = data.get("name", "Unknown")
-
-        self.logger.debug(f"Data received: {data.get('name', 'Unknown')}")
-
-    def _collect_final_stats(self, duration: float) -> Dict[str, Any]:
-        """
-        Collect final execution statistics.
-
-        Args:
-            duration: Execution duration in seconds
-
-        Returns:
-            Final statistics dictionary
-        """
-        stats = {
-            "spider_name": self.current_spider,
-            "duration_seconds": duration,
-            "start_time": self.start_time.isoformat(),  # type: ignore
-            "end_time": datetime.now().isoformat(),
-            "items_scraped": self.stats.get("items_scraped", 0),
-            "environment": self.environment,
-            "success": True,
-        }
-
-        # Add spider-specific stats if available
-        if hasattr(self.crawler_process, "crawlers"):
-            for crawler in self.crawler_process.crawlers:  # type: ignore
-                if hasattr(crawler, "stats"):
-                    stats["crawler_stats"] = dict(crawler.stats.get_stats())
-
-        return stats
-
-    def _signal_handler(self, signum: int, frame) -> None:
-        """
-        Handle system signals for graceful shutdown.
-
-        Args:
-            signum: Signal number
-            frame: Current stack frame
-        """
-        signal_names = {signal.SIGINT: "SIGINT", signal.SIGTERM: "SIGTERM"}
-
-        signal_name = signal_names.get(signum, str(signum))  # type: ignore
-        self.logger.info(f"Received {signal_name} signal, stopping spider...")
-
-        self.stop_spider(force=False)
-
-
-class BatchSpiderRunner:
-    """
-    Runner for executing multiple spiders in sequence or parallel.
-    """
-
-    def __init__(self, environment: str = "development"):
-        """
-        Initialize batch runner.
-
-        Args:
-            environment: Environment name
-        """
-        self.environment = environment
-        self.logger = get_logger(self.__class__.__name__)
-        self.runners = []
-        self.results = []
-
-    def add_spider_job(
-        self,
-        spider_name: str,
-        anime_name: str = None,  # type: ignore
-        max_characters: int = None,  # type: ignore
-        **kwargs,
-    ) -> None:
-        """
-        Add spider job to batch.
-
-        Args:
-            spider_name: Name of spider
-            anime_name: Target anime name
-            max_characters: Maximum characters to scrape
-            **kwargs: Additional parameters
-        """
-        job = {
-            "spider_name": spider_name,
-            "anime_name": anime_name,
-            "max_characters": max_characters,
-            "kwargs": kwargs,
-        }
-
-        self.runners.append(job)
-        self.logger.info(f"Added job: {spider_name} for {anime_name}")
-
-    def run_sequential(self) -> List[Dict[str, Any]]:
-        """
-        Run all spider jobs sequentially.
-
-        Returns:
-            List of execution results
-        """
-        self.logger.info(f"Starting sequential execution of {len(self.runners)} jobs")
-
-        results = []
-
-        for i, job in enumerate(self.runners):
-            self.logger.info(
-                f"Starting job {i+1}/{len(self.runners)}: {job['spider_name']}"
-            )
+        results = {}
+
+        for config in spider_configs:
+            spider_name = config["name"]
+            spider_kwargs = config.get("kwargs", {})
+            spider_settings = config.get("settings", {})
 
             try:
-                runner = SpiderRunner(self.environment)
-                result = runner.run_spider(
-                    job["spider_name"],
-                    job["anime_name"],
-                    job["max_characters"],
-                    **job["kwargs"],
-                )
-                result["job_index"] = i
-                results.append(result)
+                logger.info(f"Running spider {spider_name} sequentially")
+
+                # Merge settings
+                combined_settings = self.settings.copy()
+                combined_settings.update(spider_settings)
+
+                # Create runner for this spider
+                runner = SpiderRunner(combined_settings, self.log_level)
+
+                # Run spider
+                runner.run_spider(spider_name, spider_kwargs, blocking=True)
+
+                results[spider_name] = {"status": "completed", "error": None}
+                logger.info(f"Spider {spider_name} completed successfully")
 
             except Exception as e:
-                self.logger.error(f"Job {i+1} failed: {e}")
-                results.append(
-                    {
-                        "job_index": i,
-                        "success": False,
-                        "error": str(e),
-                        "spider_name": job["spider_name"],
-                    }
-                )
+                error_msg = f"Spider {spider_name} failed: {e}"
+                logger.error(error_msg)
 
-        self.results = results
-        self.logger.info(
-            f"Sequential execution completed: {len(results)} jobs processed"
-        )
+                results[spider_name] = {"status": "failed", "error": str(e)}
+
+                if stop_on_error:
+                    logger.error("Stopping execution due to spider failure")
+                    break
+
         return results
 
-    def run_parallel(self, max_workers: int = 3) -> List[Dict[str, Any]]:
+    def run_spiders_parallel(
+        self, spider_configs: List[Dict[str, Any]], max_workers: int = 4
+    ) -> Dict[str, Any]:
         """
-        Run spider jobs in parallel (limited workers).
+        Run spiders in parallel using multiprocessing.
 
         Args:
-            max_workers: Maximum number of parallel workers
+            spider_configs: List of spider configuration dictionaries
+            max_workers: Maximum number of concurrent spiders
 
         Returns:
-            List of execution results
+            Dictionary with results for each spider
         """
-        self.logger.info(f"Starting parallel execution with {max_workers} workers")
+        from concurrent.futures import ProcessPoolExecutor, as_completed
 
-        # Implementation would use multiprocessing or asyncio
-        # For now, fall back to sequential execution
-        self.logger.warning("Parallel execution not yet implemented, using sequential")
-        return self.run_sequential()
+        results = {}
 
-    def get_batch_summary(self) -> Dict[str, Any]:
+        def run_spider_process(config):
+            """Function to run spider in separate process."""
+            spider_name = config["name"]
+            spider_kwargs = config.get("kwargs", {})
+            spider_settings = config.get("settings", {})
+
+            try:
+                # Merge settings
+                combined_settings = self.settings.copy()
+                combined_settings.update(spider_settings)
+
+                # Create runner
+                runner = SpiderRunner(combined_settings, self.log_level)
+
+                # Run spider
+                runner.run_spider(spider_name, spider_kwargs, blocking=True)
+
+                return {"name": spider_name, "status": "completed", "error": None}
+
+            except Exception as e:
+                return {"name": spider_name, "status": "failed", "error": str(e)}
+
+        # Execute spiders in parallel
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all spider tasks
+            future_to_spider = {
+                executor.submit(run_spider_process, config): config["name"]
+                for config in spider_configs
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_spider):
+                spider_name = future_to_spider[future]
+                try:
+                    result = future.result()
+                    results[result["name"]] = {
+                        "status": result["status"],
+                        "error": result["error"],
+                    }
+                    logger.info(
+                        f"Spider {spider_name} completed with status: {result['status']}"
+                    )
+
+                except Exception as e:
+                    results[spider_name] = {"status": "failed", "error": str(e)}
+                    logger.error(f"Spider {spider_name} failed: {e}")
+
+        return results
+
+    @inlineCallbacks
+    def run_spiders_async(self, spider_configs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Get summary of batch execution results.
+        Run spiders asynchronously using Twisted reactor.
+
+        Args:
+            spider_configs: List of spider configuration dictionaries
 
         Returns:
-            Batch execution summary
+            Dictionary with results for each spider
         """
-        if not self.results:
-            return {"status": "not_executed"}
+        results = {}
 
-        successful = sum(1 for r in self.results if r.get("success", False))
-        failed = len(self.results) - successful
-        total_items = sum(r.get("items_scraped", 0) for r in self.results)
-        total_duration = sum(r.get("duration_seconds", 0) for r in self.results)
+        # Create runners for all spiders
+        runners = []
+        for config in spider_configs:
+            spider_name = config["name"]
+            spider_kwargs = config.get("kwargs", {})
+            spider_settings = config.get("settings", {})
 
-        return {
-            "total_jobs": len(self.results),
-            "successful_jobs": successful,
-            "failed_jobs": failed,
-            "total_items_scraped": total_items,
-            "total_duration_seconds": total_duration,
-            "success_rate": (successful / len(self.results)) * 100,
-            "average_items_per_job": (
-                total_items / len(self.results) if self.results else 0
-            ),
+            # Merge settings
+            combined_settings = self.settings.copy()
+            combined_settings.update(spider_settings)
+
+            runner = SpiderRunner(combined_settings, self.log_level)
+            runners.append((runner, spider_name, spider_kwargs))
+
+        # Run all spiders concurrently
+        deferreds = []
+        for runner, spider_name, spider_kwargs in runners:
+            deferred = runner._run_spider_non_blocking(spider_name, spider_kwargs)
+            deferreds.append(deferred)
+
+        # Wait for all to complete
+        try:
+            yield defer.DeferredList(deferreds, consumeErrors=True)
+
+            # Collect results
+            for i, (runner, spider_name, _) in enumerate(runners):
+                if deferreds[i].called and not hasattr(deferreds[i], "exception"):
+                    results[spider_name] = {"status": "completed", "error": None}
+                else:
+                    error = getattr(deferreds[i], "exception", "Unknown error")
+                    results[spider_name] = {"status": "failed", "error": str(error)}
+
+        except Exception as e:
+            logger.error(f"Error in async spider execution: {e}")
+            for runner, spider_name, _ in runners:
+                if spider_name not in results:
+                    results[spider_name] = {"status": "failed", "error": str(e)}
+
+        defer.returnValue(results)
+
+
+class SpiderManager:
+    """
+    High-level spider management interface.
+
+    This class provides a convenient interface for managing
+    and running spiders with different configurations.
+    """
+
+    def __init__(self, default_settings: Optional[Dict[str, Any]] = None):
+        """
+        Initialize spider manager.
+
+        Args:
+            default_settings: Default settings for all spiders
+        """
+        self.default_settings = default_settings or {}
+        self.spider_configs = {}
+        self.progress_callbacks = []
+
+    def register_spider(
+        self,
+        name: str,
+        spider_class: str,
+        settings: Optional[Dict[str, Any]] = None,
+        default_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Register a spider configuration.
+
+        Args:
+            name: Spider identifier
+            spider_class: Spider class name
+            settings: Spider-specific settings
+            default_kwargs: Default keyword arguments
+        """
+        self.spider_configs[name] = {
+            "class": spider_class,
+            "settings": settings or {},
+            "default_kwargs": default_kwargs or {},
         }
 
+        logger.info(f"Registered spider: {name}")
 
-# Convenience functions for easy usage
-def run_onepiece_scraper(
-    max_characters: int = 100, environment: str = "development"
-) -> Dict[str, Any]:
+    def run_spider(
+        self,
+        name: str,
+        kwargs: Optional[Dict[str, Any]] = None,
+        settings: Optional[Dict[str, Any]] = None,
+        blocking: bool = True,
+    ) -> Any:
+        """
+        Run a registered spider.
+
+        Args:
+            name: Spider identifier
+            kwargs: Additional keyword arguments
+            settings: Additional settings
+            blocking: Whether to block until completion
+
+        Returns:
+            Result of spider execution
+        """
+        if name not in self.spider_configs:
+            raise ValueError(f"Spider '{name}' not registered")
+
+        config = self.spider_configs[name]
+
+        # Merge settings
+        combined_settings = self.default_settings.copy()
+        combined_settings.update(config["settings"])
+        if settings:
+            combined_settings.update(settings)
+
+        # Merge kwargs
+        combined_kwargs = config["default_kwargs"].copy()
+        if kwargs:
+            combined_kwargs.update(kwargs)
+
+        # Create and run spider
+        runner = SpiderRunner(combined_settings)
+        return runner.run_spider(config["class"], combined_kwargs, blocking)
+
+    def run_multiple_spiders(
+        self, spider_names: List[str], mode: str = "sequential", **kwargs
+    ) -> Dict[str, Any]:  # type: ignore
+        """
+        Run multiple registered spiders.
+
+        Args:
+            spider_names: List of spider identifiers
+            mode: Execution mode ('sequential', 'parallel', 'async')
+            **kwargs: Additional arguments for the execution mode
+
+        Returns:
+            Dictionary with results for each spider
+        """
+        # Build spider configurations
+        spider_configs = []
+        for name in spider_names:
+            if name not in self.spider_configs:
+                logger.warning(f"Spider '{name}' not registered, skipping")
+                continue
+
+            config = self.spider_configs[name]
+            spider_config = {
+                "name": config["class"],
+                "kwargs": config["default_kwargs"],
+                "settings": {**self.default_settings, **config["settings"]},
+            }
+            spider_configs.append(spider_config)
+
+        # Create multi-spider runner
+        multi_runner = MultiSpiderRunner(self.default_settings)
+
+        # Run based on mode
+        if mode == "sequential":
+            return multi_runner.run_spiders_sequential(spider_configs, **kwargs)
+        elif mode == "parallel":
+            return multi_runner.run_spiders_parallel(spider_configs, **kwargs)
+        elif mode == "async":
+            # For async mode, we need to run in reactor
+            def run_async():
+                return multi_runner.run_spiders_async(spider_configs)
+
+            if not reactor.running:
+                reactor.callWhenRunning(run_async)
+                reactor.run()
+            else:
+                return run_async()
+        else:
+            raise ValueError(f"Invalid execution mode: {mode}")
+
+    def add_progress_callback(self, callback: Callable[[str, str, Dict], None]):
+        """
+        Add progress callback function.
+
+        Args:
+            callback: Function called with (spider_name, status, data)
+        """
+        self.progress_callbacks.append(callback)
+
+    def get_spider_list(self) -> List[str]:
+        """Get list of registered spider names."""
+        return list(self.spider_configs.keys())
+
+    def get_spider_info(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get information about a registered spider."""
+        return self.spider_configs.get(name)
+
+
+# Utility functions for common spider management tasks
+
+
+def create_spider_runner(
+    settings_override: Optional[Dict[str, Any]] = None,
+) -> SpiderRunner:
     """
-    Convenience function to run One Piece scraper.
+    Create a spider runner with common settings.
 
     Args:
-        max_characters: Maximum characters to scrape
-        environment: Environment name
+        settings_override: Settings to override defaults
+
+    Returns:
+        Configured SpiderRunner instance
+    """
+    default_settings = {
+        "ROBOTSTXT_OBEY": True,
+        "DOWNLOAD_DELAY": 1,
+        "RANDOMIZE_DOWNLOAD_DELAY": 0.5,
+        "CONCURRENT_REQUESTS": 16,
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 8,
+        "AUTOTHROTTLE_ENABLED": True,
+        "AUTOTHROTTLE_START_DELAY": 1,
+        "AUTOTHROTTLE_MAX_DELAY": 60,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.0,
+        "AUTOTHROTTLE_DEBUG": False,
+    }
+
+    if settings_override:
+        default_settings.update(settings_override)
+
+    return SpiderRunner(default_settings)
+
+
+def run_fandom_spider(
+    wiki_name: str,
+    character_list: Optional[List[str]] = None,
+    max_pages: Optional[int] = None,
+    output_file: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Convenience function to run a Fandom spider.
+
+    Args:
+        wiki_name: Name of the Fandom wiki
+        character_list: List of characters to scrape
+        max_pages: Maximum number of pages to scrape
+        output_file: Output file path
 
     Returns:
         Execution results
     """
-    runner = SpiderRunner(environment)
-    return runner.run_spider("onepiece", max_characters=max_characters)
+    settings = {}
 
+    if output_file:
+        settings["FEEDS"] = {
+            output_file: {
+                "format": "json",
+                "encoding": "utf8",
+                "store_empty": False,
+                "indent": 2,
+            }
+        }
 
-def run_generic_scraper(
-    anime_name: str, max_characters: int = 100, environment: str = "development"
-) -> Dict[str, Any]:
-    """
-    Convenience function to run generic Fandom scraper.
+    kwargs = {"wiki_name": wiki_name}
 
-    Args:
-        anime_name: Target anime name
-        max_characters: Maximum characters to scrape
-        environment: Environment name
+    if character_list:
+        kwargs["character_list"] = character_list
 
-    Returns:
-        Execution results
-    """
-    runner = SpiderRunner(environment)
-    return runner.run_spider(
-        "fandom", anime_name=anime_name, max_characters=max_characters
-    )
+    if max_pages:
+        kwargs["max_pages"] = max_pages
 
+    runner = create_spider_runner(settings)
 
-# Example usage
-if __name__ == "__main__":
-    # Example: Run One Piece scraper
     try:
-        results = run_onepiece_scraper(max_characters=50)
-        print(f"Scraping completed: {results['items_scraped']} characters collected")
+        result = runner.run_spider("fandom_spider", kwargs, blocking=True)
+        return {"status": "completed", "error": None, "result": result}
     except Exception as e:
-        print(f"Scraping failed: {e}")
+        return {"status": "failed", "error": str(e), "result": None}
+
+
+def stop_all_spiders():
+    """Emergency stop function to terminate all running spiders."""
+    try:
+        if reactor.running:
+            reactor.stop()
+
+        # Send SIGTERM to current process
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    except Exception as e:
+        logger.error(f"Error stopping spiders: {e}")
+
+
+# Signal handlers for graceful shutdown
+def setup_signal_handlers():
+    """Setup signal handlers for graceful spider shutdown."""
+
+    def signal_handler(signum, frame):
+        logger.info(f"Received signal {signum}, shutting down spiders...")
+        stop_all_spiders()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
