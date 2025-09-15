@@ -15,12 +15,13 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from PyQt5.QtWidgets import QApplication, QMessageBox
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon, QFont
+from PyQt6.QtWidgets import QApplication, QMessageBox
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QPixmap, QFont, QPalette, QColor, QIcon
 
 from gui.main_window import MainWindow
 from utils.logger import setup_logging, get_logger
+from utils.config_manager import ConfigManager
 
 
 def setup_application() -> QApplication:
@@ -47,10 +48,6 @@ def setup_application() -> QApplication:
     # Configure application-wide font
     font = QFont("Arial", 9)
     app.setFont(font)
-
-    # Enable high DPI scaling
-    app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    app.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
     return app
 
@@ -101,7 +98,7 @@ def main():
         main_window.show()
 
         # Center window on screen
-        screen = app.desktop().screenGeometry()
+        screen = app.primaryScreen().availableGeometry()  # type: ignore
         window = main_window.geometry()
         main_window.move(
             (screen.width() - window.width()) // 2,
@@ -111,7 +108,7 @@ def main():
         logger.info("Main window displayed, starting event loop")
 
         # Start application event loop
-        exit_code = app.exec_()
+        exit_code = app.exec()
 
         logger.info(f"Application exiting with code {exit_code}")
         return exit_code

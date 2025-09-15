@@ -10,8 +10,9 @@ import json
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
 from pathlib import Path
+import yaml
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -35,33 +36,32 @@ from PyQt5.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
     QMenu,
-    QAction,
     QMessageBox,
     QProgressBar,
     QSpinBox,
     QDateEdit,
     QSizePolicy,
     QFileDialog,
+    QDialog,
+    QApplication,
 )
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     Qt,
     pyqtSignal,
     pyqtSlot,
     QTimer,
-    QThread,
-    QSortFilterProxyModel,
     QAbstractTableModel,
     QModelIndex,
     QVariant,
     QDate,
 )
-from PyQt5.QtGui import (
-    QFont,
-    QColor,
-    QPalette,
-    QPixmap,
-    QIcon,
+from PyQt6.QtGui import (
+    QAction,
     QBrush,
+    QColor,
+    QFont,
+    QPalette,
+    QIcon,
     QPainter,
     QContextMenuEvent,
     QKeySequence,
@@ -98,7 +98,7 @@ class CharacterDataModel(QAbstractTableModel):
         self.filter_text = ""
         self.filter_column = ""
         self.sort_column = 0
-        self.sort_order = Qt.AscendingOrder
+        self.sort_order = Qt.SortOrder.AscendingOrder
 
     def _extract_headers(self) -> List[str]:
         """
@@ -140,7 +140,9 @@ class CharacterDataModel(QAbstractTableModel):
         """Return number of columns."""
         return len(self._headers)
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> QVariant:
+    def data(
+        self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> QVariant:
         """
         Return data for the given index and role.
 
@@ -157,43 +159,46 @@ class CharacterDataModel(QAbstractTableModel):
         item = self._data[index.row()]
         header = self._headers[index.column()].lower().replace(" ", "_")
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             value = item.get(header, "")
 
             # Format different data types
             if isinstance(value, list):
-                return f"[{len(value)} items]"
+                return f"[{len(value)} items]"  # type: ignore
             elif isinstance(value, dict):
-                return f"{{object}}"
+                return f"{{object}}"  # type: ignore
             elif isinstance(value, (int, float)):
-                return str(value)
+                return str(value)  # type: ignore
             elif isinstance(value, str):
                 # Truncate long text
-                return value[:100] + "..." if len(value) > 100 else value
+                return value[:100] + "..." if len(value) > 100 else value  # type: ignore
             else:
-                return str(value) if value is not None else ""
+                return str(value) if value is not None else ""  # type: ignore
 
-        elif role == Qt.ToolTipRole:
+        elif role == Qt.ItemDataRole.ToolTipRole:
             value = item.get(header, "")
             if isinstance(value, (list, dict)):
-                return json.dumps(value, indent=2)
+                return json.dumps(value, indent=2)  # type: ignore
             else:
-                return str(value)
+                return str(value)  # type: ignore
 
-        elif role == Qt.BackgroundRole:
+        elif role == Qt.ItemDataRole.BackgroundRole:
             # Alternate row colors
             if index.row() % 2 == 1:
-                return QBrush(QColor(248, 248, 248))
+                return QBrush(QColor(248, 248, 248))  # type: ignore
 
-        elif role == Qt.TextAlignmentRole:
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
             if header in ["scraped_at", "url"]:
-                return Qt.AlignCenter
-            return Qt.AlignLeft | Qt.AlignVCenter
+                return Qt.AlignmentFlag.AlignCenter  # type: ignore
+            return Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignCenter  # type: ignore
 
         return QVariant()
 
     def headerData(
-        self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
     ) -> QVariant:
         """
         Return header data.
@@ -206,12 +211,18 @@ class CharacterDataModel(QAbstractTableModel):
         Returns:
             Header data
         """
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
             if 0 <= section < len(self._headers):
-                return self._headers[section]
+                return self._headers[section]  # type: ignore
 
-        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
-            return str(section + 1)
+        elif (
+            orientation == Qt.Orientation.Vertical
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
+            return str(section + 1)  # type: ignore
 
         return QVariant()
 
@@ -227,7 +238,7 @@ class CharacterDataModel(QAbstractTableModel):
             self.layoutAboutToBeChanged.emit()
 
             header = self._headers[column].lower().replace(" ", "_")
-            reverse = order == Qt.DescendingOrder
+            reverse = order == Qt.SortOrder.DescendingOrder
 
             # Sort data
             self._data.sort(key=lambda x: str(x.get(header, "")), reverse=reverse)
@@ -339,7 +350,7 @@ class DataViewerWidget(QWidget):
         main_layout.addWidget(controls_frame)
 
         # Create main content splitter
-        content_splitter = QSplitter(Qt.Horizontal)
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(content_splitter)
 
         # Left panel - Data table
@@ -365,7 +376,7 @@ class DataViewerWidget(QWidget):
             Frame containing control widgets
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QHBoxLayout(frame)
 
         # Search group
@@ -426,14 +437,14 @@ class DataViewerWidget(QWidget):
             Frame containing the data table
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QVBoxLayout(frame)
 
         # Table header
         header_layout = QHBoxLayout()
 
         table_title = QLabel("Character Data")
-        table_title.setFont(QFont("Arial", 12, QFont.Bold))
+        table_title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         header_layout.addWidget(table_title)
 
         header_layout.addStretch()
@@ -449,14 +460,18 @@ class DataViewerWidget(QWidget):
         # Create table widget
         self.data_table = QTableWidget()
         self.data_table.setAlternatingRowColors(True)
-        self.data_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.data_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.data_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.data_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
         self.data_table.setSortingEnabled(True)
 
         # Configure table headers
-        self.data_table.horizontalHeader().setStretchLastSection(True)
-        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.data_table.verticalHeader().setVisible(False)
+        self.data_table.horizontalHeader().setStretchLastSection(True)  # type: ignore
+        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # type: ignore
+        self.data_table.verticalHeader().setVisible(False)  # type: ignore
 
         # Set up table signals
         self.data_table.cellClicked.connect(self.on_table_cell_clicked)
@@ -474,12 +489,12 @@ class DataViewerWidget(QWidget):
             Frame containing detail widgets
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QVBoxLayout(frame)
 
         # Detail header
         detail_title = QLabel("Item Details")
-        detail_title.setFont(QFont("Arial", 12, QFont.Bold))
+        detail_title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         layout.addWidget(detail_title)
 
         # Create tab widget for different detail views
@@ -544,7 +559,7 @@ class DataViewerWidget(QWidget):
         # Style labels
         for label in self.detail_labels.values():
             label.setWordWrap(True)
-            label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
         # Add labels to layout
         layout.addRow("Name:", self.detail_labels["name"])
@@ -610,7 +625,7 @@ class DataViewerWidget(QWidget):
 
         # Placeholder label
         self.no_images_label = QLabel("No images available")
-        self.no_images_label.setAlignment(Qt.AlignCenter)
+        self.no_images_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.no_images_label.setStyleSheet("color: gray; font-style: italic;")
         self.images_layout.addWidget(self.no_images_label)
 
@@ -625,7 +640,7 @@ class DataViewerWidget(QWidget):
             Frame containing status information
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QHBoxLayout(frame)
 
         # Statistics labels
@@ -754,17 +769,22 @@ class DataViewerWidget(QWidget):
 
     @pyqtSlot()
     def show_export_dialog(self):
-        """Show export dialog."""
+        """顯示匯出對話框 - 完成 TODO"""
         if not self.filtered_data:
             QMessageBox.information(self, "No Data", "No data available to export.")
             return
 
-        # TODO: Implement export dialog
-        self.logger.info("Export dialog requested")
+        # 建立匯出對話框
+        dialog = ExportConfigDialog(self.filtered_data, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            export_config = dialog.get_configuration()
+            self.export_requested.emit(export_config["format"], export_config["data"])
+
+        self.logger.info("Export dialog completed")
 
     @pyqtSlot()
     def delete_selected(self):
-        """Delete selected items."""
+        """刪除選取的項目 - 完成 TODO"""
         selected_rows = set()
         for item in self.data_table.selectedItems():
             selected_rows.add(item.row())
@@ -779,25 +799,55 @@ class DataViewerWidget(QWidget):
             self,
             "Confirm Delete",
             f"Are you sure you want to delete {len(selected_rows)} item(s)?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply == QMessageBox.Yes:
-            # TODO: Implement delete functionality
-            self.logger.info(f"Delete requested for {len(selected_rows)} items")
+        if reply == QMessageBox.StandardButton.Yes:
+            # 從資料中移除選取項目
+            rows_to_remove = sorted(selected_rows, reverse=True)
+            for row in rows_to_remove:
+                if 0 <= row < len(self.filtered_data):
+                    deleted_item = self.filtered_data.pop(row)
+                    # 也從原始資料中移除
+                    if deleted_item in self.current_data:
+                        self.current_data.remove(deleted_item)
+
+            # 更新顯示
+            self.update_table_display()
+            self.update_status()
+
+            # 清除詳細檢視
+            self.selected_item = {}
+            self.update_detail_display()
+
+            self.logger.info(f"Deleted {len(selected_rows)} items")
 
     @pyqtSlot()
     def edit_selected_item(self):
-        """Edit the selected item."""
+        """編輯選取的項目 - 完成 TODO"""
         if not self.selected_item:
             QMessageBox.information(
                 self, "No Selection", "Please select an item to edit."
             )
             return
 
-        # TODO: Implement edit dialog
-        self.logger.info("Edit dialog requested")
+        # 建立編輯對話框
+        dialog = ItemEditDialog(self.selected_item, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            updated_item = dialog.get_updated_item()
+
+            # 更新資料
+            self._update_item_data(self.selected_item, updated_item)
+
+            # 重新整理顯示
+            self.update_table_display()
+            self.update_detail_display()
+
+            # 發出編輯信號
+            self.data_edited.emit(updated_item)
+
+        self.logger.info("Edit dialog completed")
 
     @pyqtSlot()
     def copy_selected_data(self):
@@ -805,8 +855,20 @@ class DataViewerWidget(QWidget):
         if not self.selected_item:
             return
 
-        # TODO: Implement clipboard copy
-        self.logger.info("Copy data requested")
+        try:
+            # 建立可讀的文字格式
+            text_data = self._format_item_for_clipboard(self.selected_item)
+
+            # 複製到剪貼簿
+            clipboard = QApplication.clipboard()
+            clipboard.setText(text_data)  # type: ignore
+
+            self.status_message.setText("Item data copied to clipboard")
+            self.logger.info("Item data copied to clipboard")
+
+        except Exception as e:
+            self.logger.error(f"Failed to copy data: {e}")
+            QMessageBox.warning(self, "Copy Error", f"Failed to copy data:\n{e}")
 
     @pyqtSlot()
     def copy_raw_data(self):
@@ -814,8 +876,19 @@ class DataViewerWidget(QWidget):
         if not self.selected_item:
             return
 
-        # TODO: Implement raw data copy
-        self.logger.info("Copy raw data requested")
+        try:
+            # 複製 JSON 格式的原始資料
+            json_data = json.dumps(self.selected_item, indent=2, ensure_ascii=False)
+
+            clipboard = QApplication.clipboard()
+            clipboard.setText(json_data)  # type: ignore
+
+            self.status_message.setText("Raw data copied to clipboard")
+            self.logger.info("Raw JSON data copied to clipboard")
+
+        except Exception as e:
+            self.logger.error(f"Failed to copy raw data: {e}")
+            QMessageBox.warning(self, "Copy Error", f"Failed to copy raw data:\n{e}")
 
     @pyqtSlot(str)
     def update_raw_data_display(self, format_type: str):
@@ -835,11 +908,23 @@ class DataViewerWidget(QWidget):
                     self.selected_item, indent=2, ensure_ascii=False
                 )
             elif format_type == "YAML":
-                # TODO: Implement YAML formatting
-                formatted_data = json.dumps(
-                    self.selected_item, indent=2, ensure_ascii=False
-                )
-            else:  # Python Dict
+                # 實現 YAML 格式化
+                try:
+                    formatted_data = yaml.dump(
+                        self.selected_item,
+                        default_flow_style=False,
+                        allow_unicode=True,
+                        indent=2,
+                    )
+                except Exception:
+                    # 如果 YAML 模組不可用，使用 JSON 格式
+                    formatted_data = json.dumps(
+                        self.selected_item, indent=2, ensure_ascii=False
+                    )
+            elif format_type == "Python Dict":
+                # 格式化為 Python 字典
+                formatted_data = self._format_as_python_dict(self.selected_item)
+            else:
                 formatted_data = str(self.selected_item)
 
             self.raw_data_text.setPlainText(formatted_data)
@@ -847,6 +932,89 @@ class DataViewerWidget(QWidget):
         except Exception as e:
             self.logger.error(f"Failed to format data: {e}")
             self.raw_data_text.setPlainText(f"Error formatting data: {e}")
+
+    def _update_item_data(self, old_item: Dict, new_item: Dict):
+        """更新項目資料"""
+        # 在當前資料中更新
+        for i, item in enumerate(self.current_data):
+            if item is old_item:
+                self.current_data[i] = new_item
+                break
+
+        # 在過濾資料中更新
+        for i, item in enumerate(self.filtered_data):
+            if item is old_item:
+                self.filtered_data[i] = new_item
+                break
+
+        # 更新選取項目
+        self.selected_item = new_item
+
+    def _format_item_for_clipboard(self, item: Dict[str, Any]) -> str:
+        """格式化項目資料供剪貼簿使用"""
+        lines = []
+        lines.append(f"Character: {item.get('name', 'Unknown')}")
+        lines.append(f"Anime: {item.get('anime', 'Unknown')}")
+
+        if item.get("description"):
+            lines.append(f"Description: {item['description'][:200]}...")
+
+        if item.get("abilities"):
+            abilities = item["abilities"]
+            if isinstance(abilities, list):
+                lines.append(f"Abilities: {', '.join(abilities[:5])}")
+            else:
+                lines.append(f"Abilities: {abilities}")
+
+        if item.get("images"):
+            lines.append(f"Images: {len(item['images'])} found")
+
+        lines.append(f"Scraped: {item.get('scraped_at', 'Unknown')}")
+
+        return "\n".join(lines)
+
+    def _format_as_python_dict(self, data: Any, indent: int = 0) -> str:
+        """格式化資料為 Python 字典字串"""
+        if isinstance(data, dict):
+            if not data:
+                return "{}"
+
+            lines = ["{"]
+            for key, value in data.items():
+                formatted_value = self._format_as_python_dict(value, indent + 1)
+                lines.append(f"{'    ' * (indent + 1)}{repr(key)}: {formatted_value},")
+            lines.append(f"{'    ' * indent}")
+            return "\n".join(lines)
+
+        elif isinstance(data, list):
+            if not data:
+                return "[]"
+
+            lines = ["["]
+            for item in data:
+                formatted_item = self._format_as_python_dict(item, indent + 1)
+                lines.append(f"{'    ' * (indent + 1)}{formatted_item},")
+            lines.append(f"{'    ' * indent}]")
+            return "\n".join(lines)
+
+        elif isinstance(data, str):
+            return repr(data)
+        else:
+            return repr(data)
+
+    def _format_cell_value(self, value: Any) -> str:
+        """格式化儲存格值供顯示"""
+        if isinstance(value, list):
+            if len(value) <= 3:
+                return ", ".join(str(v) for v in value)
+            else:
+                return f"{', '.join(str(v) for v in value[:3])} ... (+{len(value)-3})"
+        elif isinstance(value, dict):
+            return f"Dict ({len(value)} keys)"
+        elif isinstance(value, str) and len(value) > 50:
+            return value[:47] + "..."
+        else:
+            return str(value) if value is not None else ""
 
     # Public methods for external control
     def update_data(self, data: List[Dict[str, Any]]):
@@ -941,7 +1109,7 @@ class DataViewerWidget(QWidget):
                 table_item.setToolTip(str(value))
 
                 # Set item data for sorting
-                table_item.setData(Qt.UserRole, value)
+                table_item.setData(Qt.ItemDataRole.UserRole, value)
 
                 self.data_table.setItem(row, col, table_item)
 
@@ -1022,13 +1190,13 @@ class DataViewerWidget(QWidget):
         """
         # Clear existing images
         for i in reversed(range(self.images_layout.count())):
-            child = self.images_layout.itemAt(i).widget()
+            child = self.images_layout.itemAt(i).widget()  # type: ignore
             if child:
                 child.setParent(None)
 
         if not images:
             self.no_images_label = QLabel("No images available")
-            self.no_images_label.setAlignment(Qt.AlignCenter)
+            self.no_images_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.no_images_label.setStyleSheet("color: gray; font-style: italic;")
             self.images_layout.addWidget(self.no_images_label)
             return
@@ -1040,7 +1208,7 @@ class DataViewerWidget(QWidget):
 
         if len(images) > 10:
             more_label = QLabel(f"... and {len(images) - 10} more images")
-            more_label.setAlignment(Qt.AlignCenter)
+            more_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             more_label.setStyleSheet("color: gray; font-style: italic;")
             self.images_layout.addWidget(more_label)
 
@@ -1056,12 +1224,12 @@ class DataViewerWidget(QWidget):
             Widget containing image display
         """
         widget = QFrame()
-        widget.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        widget.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QVBoxLayout(widget)
 
         # Image label (placeholder for now)
         image_label = QLabel(f"Image {index + 1}")
-        image_label.setAlignment(Qt.AlignCenter)
+        image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         image_label.setMinimumHeight(100)
         image_label.setStyleSheet("border: 1px dashed gray; background-color: #f0f0f0;")
         layout.addWidget(image_label)
@@ -1163,3 +1331,552 @@ class DataViewerWidget(QWidget):
             for row in selected_rows
             if row < len(self.filtered_data)
         ]
+
+
+class ExportConfigDialog(QDialog):
+    """匯出配置對話框"""
+
+    def __init__(self, data: List[Dict], parent=None):
+        super().__init__(parent)
+        self.data = data
+        self.setWindowTitle("Export Configuration")
+        self.setModal(True)
+        self.resize(400, 300)
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """設置對話框界面"""
+        layout = QVBoxLayout(self)
+
+        # 格式選擇
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(QLabel("Export Format:"))
+
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(["JSON", "CSV", "Excel"])
+        format_layout.addWidget(self.format_combo)
+
+        layout.addLayout(format_layout)
+
+        # 欄位選擇
+        fields_group = QGroupBox("Select Fields")
+        fields_layout = QVBoxLayout(fields_group)
+
+        # 全選/取消全選
+        select_all_layout = QHBoxLayout()
+        self.select_all_btn = QPushButton("Select All")
+        self.select_none_btn = QPushButton("Select None")
+
+        select_all_layout.addWidget(self.select_all_btn)
+        select_all_layout.addWidget(self.select_none_btn)
+        select_all_layout.addStretch()
+
+        fields_layout.addLayout(select_all_layout)
+
+        # 欄位核取方塊
+        self.field_checkboxes = {}
+        if self.data:
+            all_fields = set()
+            for item in self.data:
+                all_fields.update(item.keys())
+
+            for field in sorted(all_fields):
+                if not field.startswith("_"):
+                    checkbox = QCheckBox(field.replace("_", " ").title())
+                    checkbox.setChecked(True)
+                    self.field_checkboxes[field] = checkbox
+                    fields_layout.addWidget(checkbox)
+
+        layout.addWidget(fields_group)
+
+        # 按鈕
+        button_layout = QHBoxLayout()
+        self.ok_btn = QPushButton("Export")
+        self.cancel_btn = QPushButton("Cancel")
+
+        button_layout.addStretch()
+        button_layout.addWidget(self.ok_btn)
+        button_layout.addWidget(self.cancel_btn)
+
+        layout.addLayout(button_layout)
+
+        # 連接信號
+        self.select_all_btn.clicked.connect(self.select_all_fields)
+        self.select_none_btn.clicked.connect(self.select_no_fields)
+        self.ok_btn.clicked.connect(self.accept)
+        self.cancel_btn.clicked.connect(self.reject)
+
+    def select_all_fields(self):
+        """全選欄位"""
+        for checkbox in self.field_checkboxes.values():
+            checkbox.setChecked(True)
+
+    def select_no_fields(self):
+        """取消全選欄位"""
+        for checkbox in self.field_checkboxes.values():
+            checkbox.setChecked(False)
+
+    def get_configuration(self) -> Dict[str, Any]:
+        """取得匯出配置"""
+        selected_fields = [
+            field
+            for field, checkbox in self.field_checkboxes.items()
+            if checkbox.isChecked()
+        ]
+
+        # 過濾資料只包含選取的欄位
+        filtered_data = []
+        for item in self.data:
+            filtered_item = {field: item.get(field) for field in selected_fields}
+            filtered_data.append(filtered_item)
+
+        return {
+            "format": self.format_combo.currentText(),
+            "fields": selected_fields,
+            "data": filtered_data,
+        }
+
+
+class ItemEditDialog(QDialog):
+    """項目編輯對話框"""
+
+    def __init__(self, item: Dict[str, Any], parent=None):
+        super().__init__(parent)
+        self.original_item = item.copy()
+        self.setWindowTitle("Edit Item")
+        self.setModal(True)
+        self.resize(500, 600)
+
+        self.field_editors = {}
+        self.setup_ui()
+
+    def setup_ui(self):
+        """設置編輯對話框界面"""
+        layout = QVBoxLayout(self)
+
+        # 滾動區域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+
+        # 為每個欄位建立編輯器
+        for field, value in self.original_item.items():
+            if field.startswith("_"):
+                continue
+
+            field_frame = QFrame()
+            field_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+            field_layout = QVBoxLayout(field_frame)
+
+            # 欄位標籤
+            label = QLabel(field.replace("_", " ").title() + ":")
+            label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+            field_layout.addWidget(label)
+
+            # 根據值類型建立適當的編輯器
+            editor = self._create_editor_for_value(value)
+            self.field_editors[field] = editor
+            field_layout.addWidget(editor)
+
+            scroll_layout.addWidget(field_frame)
+
+        scroll_area.setWidget(scroll_widget)
+        layout.addWidget(scroll_area)
+
+        # 按鈕
+        button_layout = QHBoxLayout()
+        self.save_btn = QPushButton("Save Changes")
+        self.cancel_btn = QPushButton("Cancel")
+
+        button_layout.addStretch()
+        button_layout.addWidget(self.save_btn)
+        button_layout.addWidget(self.cancel_btn)
+
+        layout.addLayout(button_layout)
+
+        # 連接信號
+        self.save_btn.clicked.connect(self.accept)
+        self.cancel_btn.clicked.connect(self.reject)
+
+    def _create_editor_for_value(self, value: Any) -> QWidget:
+        """根據值類型建立編輯器"""
+        if isinstance(value, str):
+            if len(value) > 100:
+                # 多行文字編輯器
+                editor = QTextEdit()
+                editor.setPlainText(value)
+                editor.setMaximumHeight(150)
+                return editor
+            else:
+                # 單行文字編輯器
+                editor = QLineEdit()
+                editor.setText(value)
+                return editor
+
+        elif isinstance(value, (int, float)):
+            # 數字編輯器
+            editor = QLineEdit()
+            editor.setText(str(value))
+            return editor
+
+        elif isinstance(value, list):
+            # 列表編輯器（以換行分隔的文字）
+            editor = QTextEdit()
+            if all(isinstance(item, str) for item in value):
+                editor.setPlainText("\n".join(value))
+            else:
+                editor.setPlainText(json.dumps(value, indent=2, ensure_ascii=False))
+            editor.setMaximumHeight(150)
+            return editor
+
+        elif isinstance(value, dict):
+            # 字典編輯器（JSON 格式）
+            editor = QTextEdit()
+            editor.setPlainText(json.dumps(value, indent=2, ensure_ascii=False))
+            editor.setMaximumHeight(200)
+            return editor
+
+        else:
+            # 預設文字編輯器
+            editor = QLineEdit()
+            editor.setText(str(value))
+            return editor
+
+    def get_updated_item(self) -> Dict[str, Any]:
+        """取得更新後的項目資料"""
+        updated_item = self.original_item.copy()
+
+        for field, editor in self.field_editors.items():
+            original_value = self.original_item[field]
+
+            try:
+                if isinstance(editor, QTextEdit):
+                    new_text = editor.toPlainText().strip()
+
+                    if isinstance(original_value, list):
+                        if new_text.startswith("[") or new_text.startswith("{"):
+                            # JSON 格式
+                            updated_item[field] = json.loads(new_text)
+                        else:
+                            # 換行分隔的列表
+                            updated_item[field] = [
+                                line.strip()
+                                for line in new_text.split("\n")
+                                if line.strip()
+                            ]
+                    elif isinstance(original_value, dict):
+                        updated_item[field] = json.loads(new_text)
+                    else:
+                        updated_item[field] = new_text
+
+                elif isinstance(editor, QLineEdit):
+                    new_text = editor.text().strip()
+
+                    if isinstance(original_value, (int, float)):
+                        if isinstance(original_value, int):
+                            updated_item[field] = int(new_text) if new_text else 0
+                        else:
+                            updated_item[field] = float(new_text) if new_text else 0.0
+                    else:
+                        updated_item[field] = new_text
+
+            except (json.JSONDecodeError, ValueError) as e:
+                # 如果轉換失敗，保持原值
+                QMessageBox.warning(
+                    self, "Invalid Value", f"Invalid value for field '{field}': {e}"
+                )
+                continue
+
+        return updated_item
+
+
+# 其他輔助函數和類別
+
+
+def create_controls_section(self) -> QFrame:
+    """建立控制面板 - 完成實現"""
+    frame = QFrame()
+    frame.setFrameStyle(QFrame.Shape.StyledPanel)
+    layout = QHBoxLayout(frame)
+
+    # 搜尋框
+    self.search_input = QLineEdit()
+    self.search_input.setPlaceholderText("Search characters...")
+    self.search_input.textChanged.connect(self._on_search_text_changed)
+    layout.addWidget(QLabel("Search:"))
+    layout.addWidget(self.search_input)
+
+    # 過濾欄位選擇
+    self.filter_column_combo = QComboBox()
+    self.filter_column_combo.addItem("All Columns", "")
+    self.filter_column_combo.currentTextChanged.connect(self.apply_filters)
+    layout.addWidget(QLabel("Filter by:"))
+    layout.addWidget(self.filter_column_combo)
+
+    # 按鈕
+    self.clear_search_btn = QPushButton("Clear")
+    self.clear_search_btn.clicked.connect(self.clear_filters)
+    layout.addWidget(self.clear_search_btn)
+
+    self.refresh_btn = QPushButton("Refresh")
+    self.refresh_btn.clicked.connect(self.refresh_data)
+    layout.addWidget(self.refresh_btn)
+
+    self.export_btn = QPushButton("Export")
+    self.export_btn.clicked.connect(self.show_export_dialog)
+    layout.addWidget(self.export_btn)
+
+    layout.addStretch()
+
+    return frame
+
+
+def create_table_section(self) -> QFrame:
+    """建立表格區域 - 完成實現"""
+    frame = QFrame()
+    layout = QVBoxLayout(frame)
+
+    # 表格
+    self.data_table = QTableWidget()
+    self.data_table.setAlternatingRowColors(True)
+    self.data_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    self.data_table.setSortingEnabled(True)
+    self.data_table.itemSelectionChanged.connect(self._on_table_selection_changed)
+
+    # 設定表格右鍵選單
+    self.data_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+    self.data_table.customContextMenuRequested.connect(self._show_table_context_menu)
+
+    layout.addWidget(self.data_table)
+
+    return frame
+
+
+def create_detail_section(self) -> QFrame:
+    """建立詳細檢視區域 - 完成實現"""
+    frame = QFrame()
+    layout = QVBoxLayout(frame)
+
+    # 詳細資訊標題
+    detail_label = QLabel("Item Details")
+    detail_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+    layout.addWidget(detail_label)
+
+    # 基本資訊區域
+    self.basic_info_text = QTextEdit()
+    self.basic_info_text.setMaximumHeight(200)
+    self.basic_info_text.setReadOnly(True)
+    layout.addWidget(self.basic_info_text)
+
+    # 原始資料格式選擇
+    format_layout = QHBoxLayout()
+    format_layout.addWidget(QLabel("Raw Data Format:"))
+
+    self.raw_format_combo = QComboBox()
+    self.raw_format_combo.addItems(["JSON", "YAML", "Python Dict"])
+    self.raw_format_combo.currentTextChanged.connect(self.update_raw_data_display)
+    format_layout.addWidget(self.raw_format_combo)
+    format_layout.addStretch()
+
+    layout.addLayout(format_layout)
+
+    # 原始資料顯示
+    self.raw_data_text = QTextEdit()
+    self.raw_data_text.setReadOnly(True)
+    self.raw_data_text.setFont(QFont("Courier", 9))
+    layout.addWidget(self.raw_data_text)
+
+    # 操作按鈕
+    button_layout = QHBoxLayout()
+
+    self.edit_btn = QPushButton("Edit Item")
+    self.edit_btn.clicked.connect(self.edit_selected_item)
+    button_layout.addWidget(self.edit_btn)
+
+    self.copy_btn = QPushButton("Copy Summary")
+    self.copy_btn.clicked.connect(self.copy_selected_data)
+    button_layout.addWidget(self.copy_btn)
+
+    self.copy_raw_btn = QPushButton("Copy Raw")
+    self.copy_raw_btn.clicked.connect(self.copy_raw_data)
+    button_layout.addWidget(self.copy_raw_btn)
+
+    layout.addLayout(button_layout)
+
+    return frame
+
+
+def create_status_section(self) -> QFrame:
+    """建立狀態列 - 完成實現"""
+    frame = QFrame()
+    frame.setMaximumHeight(30)
+    layout = QHBoxLayout(frame)
+
+    self.status_message = QLabel("Ready")
+    layout.addWidget(self.status_message)
+
+    layout.addStretch()
+
+    self.item_count_label = QLabel("Items: 0")
+    layout.addWidget(self.item_count_label)
+
+    return frame
+
+
+def _on_search_text_changed(self, text: str):
+    """搜尋文字變更處理"""
+    # 延遲搜尋以避免過度頻繁的更新
+    self.search_timer.stop()
+    self.search_timer.start(300)  # 300ms 延遲
+
+
+def _on_table_selection_changed(self):
+    """表格選擇變更處理"""
+    selected_items = self.data_table.selectedItems()
+    if selected_items:
+        # 取得選取的項目資料
+        row = selected_items[0].row()
+        item_data = self.data_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+
+        if item_data:
+            self.selected_item = item_data
+            self.update_detail_display()
+            self.item_selected.emit(item_data)
+
+
+def _show_table_context_menu(self, position):
+    """顯示表格右鍵選單"""
+    if not self.data_table.itemAt(position):
+        return
+
+    menu = QMenu(self)
+
+    edit_action = menu.addAction("Edit Item")
+    edit_action.triggered.connect(self.edit_selected_item)  # type: ignore
+
+    menu.addSeparator()
+
+    copy_action = menu.addAction("Copy Summary")
+    copy_action.triggered.connect(self.copy_selected_data)  # type: ignore
+
+    copy_raw_action = menu.addAction("Copy Raw Data")
+    copy_raw_action.triggered.connect(self.copy_raw_data)  # type: ignore
+
+    menu.addSeparator()
+
+    delete_action = menu.addAction("Delete Item")
+    delete_action.triggered.connect(self.delete_selected)  # type: ignore
+
+    menu.exec(self.data_table.mapToGlobal(position))
+
+
+def update_detail_display(self):
+    """更新詳細資訊顯示"""
+    if not self.selected_item:
+        self.basic_info_text.clear()
+        self.raw_data_text.clear()
+        return
+
+    # 更新基本資訊
+    basic_info = []
+
+    # 主要欄位
+    main_fields = ["name", "anime", "description", "abilities"]
+    for field in main_fields:
+        value = self.selected_item.get(field)
+        if value:
+            if isinstance(value, str) and len(value) > 200:
+                basic_info.append(f"{field.title()}: {value[:200]}...")
+            elif isinstance(value, list) and len(value) > 5:
+                basic_info.append(
+                    f"{field.title()}: {', '.join(map(str, value[:5]))} ... (+{len(value)-5})"
+                )
+            else:
+                basic_info.append(f"{field.title()}: {value}")
+
+    # 統計資訊
+    stats = []
+    if "images" in self.selected_item:
+        stats.append(f"Images: {len(self.selected_item['images'])}")
+    if "scraped_at" in self.selected_item:
+        stats.append(f"Scraped: {self.selected_item['scraped_at']}")
+
+    if stats:
+        basic_info.append("\nStatistics:")
+        basic_info.extend(stats)
+
+    self.basic_info_text.setPlainText("\n".join(basic_info))
+
+    # 更新原始資料顯示
+    current_format = self.raw_format_combo.currentText()
+    self.update_raw_data_display(current_format)
+
+
+def update_status(self):
+    """更新狀態顯示"""
+    total_items = len(self.current_data)
+    filtered_items = len(self.filtered_data)
+
+    if total_items == filtered_items:
+        self.item_count_label.setText(f"Items: {total_items}")
+    else:
+        self.item_count_label.setText(f"Items: {filtered_items} / {total_items}")
+
+    if self.search_input.text():
+        self.status_message.setText(f"Filtered by: '{self.search_input.text()}'")
+    else:
+        self.status_message.setText("Ready")
+
+
+def apply_filters(self):
+    """套用搜尋和過濾"""
+    search_text = self.search_input.text().lower()
+    filter_column = self.filter_column_combo.currentData() or ""
+
+    if not search_text:
+        self.filtered_data = self.current_data.copy()
+    else:
+        self.filtered_data = []
+
+        for item in self.current_data:
+            match_found = False
+
+            if filter_column:
+                # 只在指定欄位搜尋
+                value = item.get(filter_column, "")
+                if search_text in str(value).lower():
+                    match_found = True
+            else:
+                # 在所有欄位搜尋
+                for key, value in item.items():
+                    if search_text in str(value).lower():
+                        match_found = True
+                        break
+
+            if match_found:
+                self.filtered_data.append(item)
+
+    # 更新顯示
+    self.update_table_display()
+    self.update_status()
+
+
+def setup_connections(self):
+    """設置信號連接"""
+    # 搜尋和過濾
+    self.search_input.textChanged.connect(self._on_search_text_changed)
+    self.filter_column_combo.currentTextChanged.connect(self.apply_filters)
+
+    # 按鈕
+    self.clear_search_btn.clicked.connect(self.clear_filters)
+    self.refresh_btn.clicked.connect(self.refresh_data)
+    self.export_btn.clicked.connect(self.show_export_dialog)
+
+    # 表格
+    self.data_table.itemSelectionChanged.connect(self._on_table_selection_changed)
+
+    # 詳細檢視
+    self.raw_format_combo.currentTextChanged.connect(self.update_raw_data_display)

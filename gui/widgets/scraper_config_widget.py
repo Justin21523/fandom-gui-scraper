@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -40,8 +40,8 @@ from PyQt5.QtWidgets import (
     QHeaderView,
     QSizePolicy,
 )
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QTimer, QRegExp, QThread
-from PyQt5.QtGui import QFont, QRegExpValidator, QIntValidator, QDoubleValidator, QIcon
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt, QTimer, QThread
+from PyQt6.QtGui import QFont, QIntValidator, QDoubleValidator, QIcon
 
 from utils.logger import get_logger
 from utils.config_manager import ConfigManager
@@ -304,7 +304,7 @@ class ScraperConfigWidget(QWidget):
         self.custom_fields_table.setHorizontalHeaderLabels(
             ["Field Name", "CSS Selector", "Data Type"]
         )
-        self.custom_fields_table.horizontalHeader().setStretchLastSection(True)
+        self.custom_fields_table.horizontalHeader().setStretchLastSection(True)  # type: ignore
         custom_layout.addWidget(self.custom_fields_table)
 
         # Custom fields controls
@@ -648,7 +648,7 @@ class ScraperConfigWidget(QWidget):
             Frame containing action buttons
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QHBoxLayout(frame)
 
         # Load configuration button
@@ -805,11 +805,11 @@ class ScraperConfigWidget(QWidget):
             self,
             "Reset Configuration",
             "Are you sure you want to reset all settings to defaults?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.load_default_configuration()
             self.logger.info("Configuration reset to defaults")
 
@@ -954,7 +954,7 @@ class ScraperConfigWidget(QWidget):
                         {
                             "name": field_name.text(),
                             "selector": field_selector.text(),
-                            "type": field_type_widget.currentText(),
+                            "type": field_type_widget.currentText(),  # type: ignore
                         }
                     )
 
@@ -1164,7 +1164,7 @@ class ScraperConfigWidget(QWidget):
                 )
                 type_combo = self.custom_fields_table.cellWidget(row, 2)
                 if type_combo:
-                    type_combo.setCurrentText(field.get("type", "Text"))
+                    type_combo.setCurrentText(field.get("type", "Text"))  # type: ignore
 
             self.logger.info("Configuration applied successfully")
 
@@ -1228,7 +1228,7 @@ class ScraperConfigWidget(QWidget):
             self.db_status_label.setText(message or "Connection failed")
             self.db_status_label.setStyleSheet("color: red;")
 
-        self.test_db_btn.setEnabled(True).Slot()
+        self.test_db_btn.setEnabled(True)
 
     def on_config_changed(self):
         """Handle configuration changes."""

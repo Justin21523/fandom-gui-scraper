@@ -10,7 +10,7 @@ import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -26,8 +26,8 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QSpacerItem,
 )
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot, Qt, QMutex, QMutexLocker
-from PyQt5.QtGui import QFont, QPixmap, QMovie, QPalette, QColor
+from PyQt6.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot, Qt, QMutex, QMutexLocker
+from PyQt6.QtGui import QFont, QPixmap, QMovie, QPalette, QColor
 
 from utils.logger import get_logger
 
@@ -142,18 +142,18 @@ class ProgressDialog(QDialog):
             Frame containing header elements
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QVBoxLayout(frame)
 
         # Operation title
         self.operation_label = QLabel("Preparing to scrape...")
-        self.operation_label.setFont(QFont("Arial", 12, QFont.Bold))
-        self.operation_label.setAlignment(Qt.AlignCenter)
+        self.operation_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        self.operation_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.operation_label)
 
         # Target information
         self.target_label = QLabel("Target: Not specified")
-        self.target_label.setAlignment(Qt.AlignCenter)
+        self.target_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.target_label)
 
         # Time information
@@ -184,50 +184,53 @@ class ProgressDialog(QDialog):
             Frame containing progress elements
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         layout = QVBoxLayout(frame)
 
-        # Overall progress
-        overall_group = QGroupBox("Overall Progress")
-        overall_layout = QVBoxLayout(overall_group)
+        # 主要進度條
+        main_progress_layout = QVBoxLayout()
 
-        self.overall_progress = QProgressBar()
-        self.overall_progress.setTextVisible(True)
-        self.overall_progress.setFormat("%p% (%v/%m)")
-        overall_layout.addWidget(self.overall_progress)
+        self.main_progress_label = QLabel("Overall Progress")
+        self.main_progress_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        main_progress_layout.addWidget(self.main_progress_label)
 
-        self.overall_status = QLabel("Waiting to start...")
-        overall_layout.addWidget(self.overall_status)
+        self.main_progress_bar = QProgressBar()
+        self.main_progress_bar.setRange(0, 100)
+        self.main_progress_bar.setValue(0)
+        self.main_progress_bar.setTextVisible(True)
+        main_progress_layout.addWidget(self.main_progress_bar)
 
-        layout.addWidget(overall_group)
+        layout.addLayout(main_progress_layout)
 
-        # Current task progress
-        task_group = QGroupBox("Current Task")
-        task_layout = QVBoxLayout(task_group)
+        # 詳細進度條
+        details_group = QGroupBox("Detailed Progress")
+        details_layout = QGridLayout(details_group)
 
-        self.task_progress = QProgressBar()
-        self.task_progress.setTextVisible(True)
-        task_layout.addWidget(self.task_progress)
+        # 字符爬取進度
+        details_layout.addWidget(QLabel("Characters:"), 0, 0)
+        self.characters_progress = QProgressBar()
+        self.characters_progress.setRange(0, 100)
+        self.characters_progress_label = QLabel("0/0")
+        details_layout.addWidget(self.characters_progress, 0, 1)
+        details_layout.addWidget(self.characters_progress_label, 0, 2)
 
-        self.task_status = QLabel("No active task")
-        task_layout.addWidget(self.task_status)
+        # 圖片下載進度
+        details_layout.addWidget(QLabel("Images:"), 1, 0)
+        self.images_progress = QProgressBar()
+        self.images_progress.setRange(0, 100)
+        self.images_progress_label = QLabel("0/0")
+        details_layout.addWidget(self.images_progress, 1, 1)
+        details_layout.addWidget(self.images_progress_label, 1, 2)
 
-        layout.addWidget(task_group)
+        # 頁面處理進度
+        details_layout.addWidget(QLabel("Pages:"), 2, 0)
+        self.pages_progress = QProgressBar()
+        self.pages_progress.setRange(0, 100)
+        self.pages_progress_label = QLabel("0/0")
+        details_layout.addWidget(self.pages_progress, 2, 1)
+        details_layout.addWidget(self.pages_progress_label, 2, 2)
 
-        # Sub-task progress (for detailed operations)
-        subtask_group = QGroupBox("Sub-task Progress")
-        subtask_layout = QVBoxLayout(subtask_group)
-
-        self.subtask_progress = QProgressBar()
-        self.subtask_progress.setTextVisible(True)
-        self.subtask_progress.setVisible(False)  # Hidden by default
-        subtask_layout.addWidget(self.subtask_progress)
-
-        self.subtask_status = QLabel("No sub-task")
-        self.subtask_status.setVisible(False)
-        subtask_layout.addWidget(self.subtask_status)
-
-        layout.addWidget(subtask_group)
+        layout.addWidget(details_group)
 
         return frame
 
@@ -239,7 +242,7 @@ class ProgressDialog(QDialog):
             Frame containing statistics display
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
 
         stats_group = QGroupBox("Statistics")
         layout = QGridLayout(stats_group)
@@ -250,44 +253,48 @@ class ProgressDialog(QDialog):
         # Row 0: Counts
         layout.addWidget(QLabel("Characters:"), 0, 0)
         self.stats_labels["characters"] = QLabel("0")
-        self.stats_labels["characters"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["characters"].setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(self.stats_labels["characters"], 0, 1)
 
         layout.addWidget(QLabel("Images:"), 0, 2)
         self.stats_labels["images"] = QLabel("0")
-        self.stats_labels["images"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["images"].setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(self.stats_labels["images"], 0, 3)
 
         layout.addWidget(QLabel("Pages:"), 0, 4)
         self.stats_labels["pages"] = QLabel("0")
-        self.stats_labels["pages"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["pages"].setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(self.stats_labels["pages"], 0, 5)
 
         # Row 1: Rates and percentages
         layout.addWidget(QLabel("Success Rate:"), 1, 0)
         self.stats_labels["success_rate"] = QLabel("0%")
-        self.stats_labels["success_rate"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["success_rate"].setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(self.stats_labels["success_rate"], 1, 1)
 
         layout.addWidget(QLabel("Processing Rate:"), 1, 2)
         self.stats_labels["processing_rate"] = QLabel("0/s")
-        self.stats_labels["processing_rate"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["processing_rate"].setFont(
+            QFont("Arial", 10, QFont.Weight.Bold)
+        )
         layout.addWidget(self.stats_labels["processing_rate"], 1, 3)
 
         layout.addWidget(QLabel("Errors:"), 1, 4)
         self.stats_labels["errors"] = QLabel("0")
-        self.stats_labels["errors"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["errors"].setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(self.stats_labels["errors"], 1, 5)
 
         # Row 2: Response time and duplicates
         layout.addWidget(QLabel("Avg Response:"), 2, 0)
         self.stats_labels["response_time"] = QLabel("0ms")
-        self.stats_labels["response_time"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["response_time"].setFont(
+            QFont("Arial", 10, QFont.Weight.Bold)
+        )
         layout.addWidget(self.stats_labels["response_time"], 2, 1)
 
         layout.addWidget(QLabel("Duplicates:"), 2, 2)
         self.stats_labels["duplicates"] = QLabel("0")
-        self.stats_labels["duplicates"].setFont(QFont("Arial", 10, QFont.Bold))
+        self.stats_labels["duplicates"].setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(self.stats_labels["duplicates"], 2, 3)
 
         # Add frame layout
@@ -304,7 +311,7 @@ class ProgressDialog(QDialog):
             Frame containing log display
         """
         frame = QFrame()
-        frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
 
         log_group = QGroupBox("Status Log")
         layout = QVBoxLayout(log_group)
@@ -594,7 +601,7 @@ class ProgressDialog(QDialog):
         # Auto-scroll if enabled
         if self.auto_scroll_checkbox.isChecked():
             scrollbar = self.log_text.verticalScrollBar()
-            scrollbar.setValue(scrollbar.maximum())
+            scrollbar.setValue(scrollbar.maximum())  # type: ignore
 
     def operation_completed(self, success: bool = True, message: str = ""):
         """

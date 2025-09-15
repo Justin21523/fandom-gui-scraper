@@ -13,7 +13,9 @@ import time
 from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
+from scrapy import Spider, Request
 from scrapy.http import Response, Request
+from utils.logger import get_logger
 
 
 class BaseSpider(scrapy.Spider):
@@ -89,9 +91,14 @@ class BaseSpider(scrapy.Spider):
         self.spider_config = self._load_spider_config()
 
         # Initialize logger
-        self.logger = logging.getLogger(self.__class__.__name__)  # type: ignore
+        self.logger = get_logger(self.__class__.__name__)  # type: ignore
 
         self.logger.info(f"Initialized {self.name} spider for anime: {anime_name}")
+
+    @property
+    def custom_logger(self):
+        """Access the custom logger safely."""
+        return self.logger
 
     def _load_selector_config(self) -> Dict[str, Any]:
         """

@@ -28,6 +28,9 @@ class DatabaseConfig:
     username: Optional[str] = None
     password: Optional[str] = None
     uri: Optional[str] = None
+    auth_source: str = "admin"
+    connection_timeout: int = 5000
+    server_selection_timeout: int = 3000
 
     def get_connection_string(self) -> str:
         """Build MongoDB connection string."""

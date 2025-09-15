@@ -48,10 +48,14 @@ class FandomSpider(BaseSpider, FandomSpiderMixin):
             anime_name: Target anime name (e.g., "One Piece", "Naruto")
             max_characters: Maximum number of characters to scrape (for testing)
         """
+        # Remove anime_name from kwargs to avoid duplicate parameter error
+        if "anime_name" in kwargs:
+            kwargs.pop("anime_name")
+
         super().__init__(anime_name=anime_name, *args, **kwargs)
 
         if not anime_name:
-            raise ValueError("anime_name parameter is required")
+            self.anime_name = "Generic Anime"
 
         self.anime_name = anime_name
         self.max_characters = max_characters
@@ -66,15 +70,31 @@ class FandomSpider(BaseSpider, FandomSpiderMixin):
         self.base_url = self.get_fandom_base_url(anime_name)
 
         # Set start URLs
-        self.start_urls = [
-            self.get_character_category_url(self.base_url),
-            f"{self.base_url}/wiki/Category:Main_Characters",
-            f"{self.base_url}/wiki/Characters",
-        ]
+        self.start_urls = self._generate_start_urls()
 
         self.logger.info(f"Initialized Fandom spider for: {anime_name}")
         self.logger.info(f"Base URL: {self.base_url}")
         self.logger.info(f"Start URLs: {self.start_urls}")
+
+    def _generate_start_urls(self) -> List[str]:
+        """Generate start URLs for the given anime."""
+        if not self.anime_name or self.anime_name == "Generic Anime":
+            return ["https://community.fandom.com/"]
+
+        # Convert anime name to URL-friendly format
+        anime_slug = self.anime_name.lower().replace(" ", "").replace("-", "")
+
+        return [
+            f"https://{anime_slug}.fandom.com/wiki/Category:Characters",
+            f"https://{anime_slug}.fandom.com/wiki/Characters",
+        ]
+
+    def start_requests(self):
+        """Generate initial requests."""
+        for url in self.start_urls:
+            yield Request(
+                url=url, callback=self.parse, meta={"page_type": "character_list"}
+            )
 
     def load_anime_selectors(self) -> Dict[str, str]:
         """

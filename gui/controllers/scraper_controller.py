@@ -1,3 +1,4 @@
+# gui/controllers/scraper_controller.py
 """
 Scraper controller for managing web scraping operations from GUI.
 
@@ -15,8 +16,11 @@ from datetime import datetime
 import subprocess
 import sys
 import os
+import json
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, QTimer, QMutex, QMutexLocker
+from PyQt6.QtCore import QObject, QThread, pyqtSignal, QTimer, QMutex, QMutexLocker
+from PyQt6.QtWidgets import QMessageBox
+
 from scrapy.crawler import CrawlerProcess, CrawlerRunner
 from scrapy.utils.project import get_project_settings
 from twisted.internet import reactor, defer
@@ -96,6 +100,13 @@ class ScrapyWorkerThread(QThread):
 
             if not self.should_stop:
                 self.spider_finished.emit(self.get_results())
+
+    def _setup_scrapy_environment(self):
+        """設置 Scrapy 執行環境"""
+        # 確保專案目錄在 Python 路徑中
+        project_root = Path(__file__).parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
 
     def run_scraping(self):
         """Execute the scraping operation."""
@@ -379,6 +390,36 @@ if __name__ == "__main__":
             self.statistics["errors_encountered"] += 1
             self.spider_error.emit(output)
 
+    def _read_spider_results(self, output_file: str) -> Dict[str, Any]:
+        """讀取爬蟲執行結果"""
+        try:
+            with open(output_file, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+
+            if not content:
+                return {"characters": [], "statistics": self.get_statistics()}
+
+            # 解析 JSON Lines 格式
+            characters = []
+            for line in content.split("\n"):
+                if line.strip():
+                    try:
+                        item = json.loads(line)
+                        characters.append(item)
+                        self.data_received.emit(item)
+                    except json.JSONDecodeError:
+                        continue
+
+            with QMutexLocker(self.mutex):
+                self.scraped_data = characters
+                self.statistics["items_scraped"] = len(characters)
+
+            return {"characters": characters, "statistics": self.get_statistics()}
+
+        except Exception as e:
+            self.logger.error(f"Failed to read results: {e}")
+            return {"characters": [], "statistics": self.get_statistics()}
+
     # Callback methods for spider communication
     def on_progress_update(self, message: str, progress: int):
         """Handle progress updates from spider."""
@@ -414,6 +455,18 @@ if __name__ == "__main__":
         """Request scraping to resume."""
         with QMutexLocker(self.mutex):
             self.should_pause = False
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """取得統計資料"""
+        with QMutexLocker(self.mutex):
+            stats = self.statistics.copy()
+            if stats["start_time"] and stats["end_time"]:
+                stats["duration"] = stats["end_time"] - stats["start_time"]
+            elif stats["start_time"]:
+                stats["duration"] = time.time() - stats["start_time"]
+            else:
+                stats["duration"] = 0
+            return stats
 
     def get_results(self) -> Dict[str, Any]:
         """
