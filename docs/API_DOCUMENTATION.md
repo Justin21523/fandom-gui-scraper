@@ -2,6 +2,24 @@
 
 The Fandom Scraper provides a comprehensive RESTful API for programmatic access to scraped anime data and application functionality.
 
+## 🟢 Implementation Status
+
+The following endpoints are **currently implemented**:
+
+| Endpoint | Status | Description |
+|----------|--------|-------------|
+| `GET /` | ✅ Implemented | API info and version |
+| `GET /health` | ✅ Implemented | Health check |
+| `GET /api/v1/characters/` | ✅ Implemented | List characters with pagination |
+| `GET /api/v1/characters/{id}` | ✅ Implemented | Get character by ID |
+| `GET /api/v1/characters/search` | ✅ Implemented | Search characters |
+| `POST /api/v1/characters/` | ✅ Implemented | Create character |
+| `PUT /api/v1/characters/{id}` | ✅ Implemented | Update character |
+| `DELETE /api/v1/characters/{id}` | ✅ Implemented | Delete character |
+| `GET /api/v1/characters/stats` | ✅ Implemented | Get character statistics |
+
+**Note**: Authentication, rate limiting, webhooks, and WebSocket features described below are planned for future implementation.
+
 ## 📋 Table of Contents
 
 - [Overview](#-overview)

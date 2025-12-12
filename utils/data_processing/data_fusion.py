@@ -215,7 +215,7 @@ class DataFusion:
                         datetime.now() - scraped_time.replace(tzinfo=None)
                     ).total_seconds() / 3600
                     freshness = max(0, 100 - (age_hours / 24))  # Decrease by time
-                except:
+                except (ValueError, TypeError):
                     pass
 
             return source_priority + completeness * 0.5 + freshness * 0.2
@@ -452,7 +452,7 @@ class DataFusion:
                 freshness_score = max(
                     0, 1 - (age_hours / (24 * 7))
                 )  # Decay over a week
-            except:
+            except (ValueError, TypeError):
                 pass
 
         # Quality score (based on data richness)

@@ -476,8 +476,7 @@ class QualityScorer:
         if name.lower() in ['unknown', 'unnamed', 'n/a', 'null', 'none']:
             issues.append("Name appears to be a placeholder")
 
-        if re.match(r'^[0-9]+
-        , name):
+        if re.match(r'^[0-9]+$', name):
             issues.append("Name appears to be just numbers")
 
         # Special character validation
@@ -557,8 +556,7 @@ class QualityScorer:
             r'localhost|'  # localhost...
             r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
             r'(?::\d+)?'  # optional port
-            r'(?:/?|[/?]\S+)
-        , re.IGNORECASE)
+            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
         if not url_pattern.match(url):
             issues.append("URL format is invalid")

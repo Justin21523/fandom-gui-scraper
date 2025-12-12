@@ -149,7 +149,6 @@ class ChartGenerator:
             return result
 
         except Exception as e:
-        except Exception as e:
             error_msg = f"Failed to generate timeline chart: {e}"
             self.logger.error(error_msg)
             return {'success': False, 'error': error_msg}

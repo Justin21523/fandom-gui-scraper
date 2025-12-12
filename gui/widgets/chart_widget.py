@@ -560,7 +560,7 @@ class ChartWidget(QWidget):
                         date = date_str
                     episode_numbers.append(ep_num)
                     dates.append(date)
-                except:
+                except (ValueError, TypeError):
                     continue
 
         if not episode_numbers:
@@ -766,7 +766,7 @@ class ChartWidget(QWidget):
                         date = date_str
                     dates.append(date)
                     qualities.append(quality)
-                except:
+                except (ValueError, TypeError):
                     continue
 
         if not dates:

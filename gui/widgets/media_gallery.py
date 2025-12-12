@@ -73,9 +73,247 @@ from PyQt6.QtGui import (
     QMovie,
     QPen,
     QBrush,
+    QTransform,
+    QKeyEvent,
+    QWheelEvent,
 )
 
 from utils.logger import get_logger
+
+
+class FullscreenGalleryDialog(QDialog):
+    """Fullscreen dialog for viewing images with zoom and navigation."""
+
+    def __init__(self, images: List[Dict[str, Any]], current_index: int = 0, parent=None):
+        super().__init__(parent)
+        self.images = images
+        self.current_index = current_index
+        self.zoom_factor = 1.0
+        self.original_pixmap: Optional[QPixmap] = None
+
+        self.setWindowTitle("Fullscreen Gallery")
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet("background-color: black;")
+        self.showFullScreen()
+
+        self.setup_ui()
+        self.load_current_image()
+
+    def setup_ui(self):
+        """Set up the fullscreen UI."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Image display
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_label.setStyleSheet("background-color: black;")
+        layout.addWidget(self.image_label, 1)
+
+        # Bottom controls overlay
+        controls_container = QWidget()
+        controls_container.setStyleSheet("""
+            QWidget {
+                background-color: rgba(0, 0, 0, 180);
+            }
+            QPushButton {
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+                padding: 8px 16px;
+                border-radius: 4px;
+                min-width: 60px;
+            }
+            QPushButton:hover {
+                background-color: #555;
+            }
+            QLabel {
+                color: white;
+            }
+        """)
+        controls_layout = QHBoxLayout(controls_container)
+        controls_layout.setContentsMargins(20, 10, 20, 10)
+
+        # Navigation buttons
+        self.prev_btn = QPushButton("◀ Prev")
+        self.prev_btn.clicked.connect(self.prev_image)
+        controls_layout.addWidget(self.prev_btn)
+
+        # Image info
+        self.info_label = QLabel()
+        self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        controls_layout.addWidget(self.info_label, 1)
+
+        self.next_btn = QPushButton("Next ▶")
+        self.next_btn.clicked.connect(self.next_image)
+        controls_layout.addWidget(self.next_btn)
+
+        controls_layout.addSpacing(30)
+
+        # Zoom controls
+        zoom_out_btn = QPushButton("-")
+        zoom_out_btn.setFixedWidth(40)
+        zoom_out_btn.clicked.connect(self.zoom_out)
+        controls_layout.addWidget(zoom_out_btn)
+
+        self.zoom_label = QLabel("100%")
+        self.zoom_label.setFixedWidth(60)
+        self.zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        controls_layout.addWidget(self.zoom_label)
+
+        zoom_in_btn = QPushButton("+")
+        zoom_in_btn.setFixedWidth(40)
+        zoom_in_btn.clicked.connect(self.zoom_in)
+        controls_layout.addWidget(zoom_in_btn)
+
+        fit_btn = QPushButton("Fit")
+        fit_btn.clicked.connect(self.fit_to_screen)
+        controls_layout.addWidget(fit_btn)
+
+        actual_btn = QPushButton("1:1")
+        actual_btn.clicked.connect(self.actual_size)
+        controls_layout.addWidget(actual_btn)
+
+        controls_layout.addSpacing(30)
+
+        # Close button
+        close_btn = QPushButton("✕ Close (Esc)")
+        close_btn.clicked.connect(self.close)
+        controls_layout.addWidget(close_btn)
+
+        layout.addWidget(controls_container)
+
+    def load_current_image(self):
+        """Load and display the current image."""
+        if not self.images or self.current_index >= len(self.images):
+            self.image_label.setText("No image available")
+            return
+
+        item = self.images[self.current_index]
+        image_path = item.get("local_path", "")
+
+        if image_path and os.path.exists(image_path):
+            self.original_pixmap = QPixmap(image_path)
+            if not self.original_pixmap.isNull():
+                self.fit_to_screen()
+                self.update_info()
+            else:
+                self.image_label.setText("Invalid image")
+                self.original_pixmap = None
+        else:
+            self.image_label.setText("Image not found")
+            self.original_pixmap = None
+
+    def update_info(self):
+        """Update the info label."""
+        if not self.images:
+            return
+
+        item = self.images[self.current_index]
+        char_name = item.get("character_name", "Unknown")
+        anime_name = item.get("anime_name", "Unknown")
+        self.info_label.setText(
+            f"{self.current_index + 1} / {len(self.images)} - {char_name} ({anime_name})"
+        )
+
+    def display_image(self):
+        """Display the image with current zoom."""
+        if not self.original_pixmap:
+            return
+
+        if self.zoom_factor == 1.0:
+            # Fit to screen
+            screen_size = self.image_label.size()
+            scaled = self.original_pixmap.scaled(
+                screen_size.width() - 40,
+                screen_size.height() - 40,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.image_label.setPixmap(scaled)
+        else:
+            # Apply zoom
+            new_size = QSize(
+                int(self.original_pixmap.width() * self.zoom_factor),
+                int(self.original_pixmap.height() * self.zoom_factor)
+            )
+            scaled = self.original_pixmap.scaled(
+                new_size,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.image_label.setPixmap(scaled)
+
+        self.zoom_label.setText(f"{int(self.zoom_factor * 100)}%")
+
+    def zoom_in(self):
+        """Zoom in by 25%."""
+        self.zoom_factor = min(5.0, self.zoom_factor * 1.25)
+        self.display_image()
+
+    def zoom_out(self):
+        """Zoom out by 25%."""
+        self.zoom_factor = max(0.1, self.zoom_factor / 1.25)
+        self.display_image()
+
+    def fit_to_screen(self):
+        """Fit image to screen."""
+        self.zoom_factor = 1.0
+        self.display_image()
+
+    def actual_size(self):
+        """Show image at actual size (100%)."""
+        if self.original_pixmap:
+            screen_size = self.image_label.size()
+            # Calculate what zoom factor would give us 100% size
+            fit_width = (screen_size.width() - 40) / self.original_pixmap.width()
+            fit_height = (screen_size.height() - 40) / self.original_pixmap.height()
+            fit_factor = min(fit_width, fit_height)
+            # Actual size is 1/fit_factor relative to fit
+            self.zoom_factor = 1.0 / fit_factor if fit_factor > 0 else 1.0
+            self.display_image()
+
+    def prev_image(self):
+        """Go to previous image."""
+        if self.current_index > 0:
+            self.current_index -= 1
+            self.zoom_factor = 1.0
+            self.load_current_image()
+
+    def next_image(self):
+        """Go to next image."""
+        if self.current_index < len(self.images) - 1:
+            self.current_index += 1
+            self.zoom_factor = 1.0
+            self.load_current_image()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard navigation."""
+        key = event.key()
+        if key == Qt.Key.Key_Escape:
+            self.close()
+        elif key == Qt.Key.Key_Left:
+            self.prev_image()
+        elif key == Qt.Key.Key_Right:
+            self.next_image()
+        elif key == Qt.Key.Key_Plus or key == Qt.Key.Key_Equal:
+            self.zoom_in()
+        elif key == Qt.Key.Key_Minus:
+            self.zoom_out()
+        elif key == Qt.Key.Key_F:
+            self.fit_to_screen()
+        elif key == Qt.Key.Key_1:
+            self.actual_size()
+        else:
+            super().keyPressEvent(event)
+
+    def wheelEvent(self, event: QWheelEvent):
+        """Handle mouse wheel for zoom."""
+        delta = event.angleDelta().y()
+        if delta > 0:
+            self.zoom_in()
+        else:
+            self.zoom_out()
 
 
 class MediaGallery(QWidget):
@@ -789,7 +1027,7 @@ class MediaGallery(QWidget):
                         days_old = (datetime.now() - created).days
                         if days_old > 7:  # More than 7 days old
                             continue
-                    except:
+                    except (ValueError, TypeError):
                         continue
 
             filtered.append(item)
@@ -1293,33 +1531,140 @@ class MediaGallery(QWidget):
         self.slideshow_info_label.setText(info_text)
 
     def _toggle_fullscreen(self):
-        """Toggle fullscreen mode."""
-        # This would need to be implemented with a separate fullscreen window
-        QMessageBox.information(
-            self, "Fullscreen", "Fullscreen mode not yet implemented."
-        )
+        """Toggle fullscreen mode with the current image."""
+        if not self.filtered_items:
+            QMessageBox.information(
+                self, "No Images", "No images available to display."
+            )
+            return
 
-    # Preview zoom methods
+        dialog = FullscreenGalleryDialog(
+            images=self.filtered_items,
+            current_index=self.current_item_index,
+            parent=self
+        )
+        dialog.exec()
+
+        # Update current index after fullscreen closes
+        self.current_item_index = dialog.current_index
+        if self.current_item_index < len(self.filtered_items):
+            item = self.filtered_items[self.current_item_index]
+            self._update_slideshow_display(item)
+            self._update_image_preview(item)
+
+    # Preview zoom methods - track zoom factor
+    _preview_zoom_factor = 1.0
+    _preview_original_pixmap: Optional[QPixmap] = None
+
     def _zoom_in_preview(self):
-        """Zoom in preview image."""
-        # Implementation would scale the current pixmap larger
-        pass
+        """Zoom in preview image by 25%."""
+        if self.current_item_index >= len(self.filtered_items):
+            return
+
+        item = self.filtered_items[self.current_item_index]
+        image_path = item.get("local_path", "")
+
+        if not image_path or not os.path.exists(image_path):
+            return
+
+        # Load original pixmap if not cached
+        if self._preview_original_pixmap is None:
+            self._preview_original_pixmap = QPixmap(image_path)
+            self._preview_zoom_factor = 1.0
+
+        if self._preview_original_pixmap.isNull():
+            return
+
+        # Increase zoom
+        self._preview_zoom_factor = min(5.0, self._preview_zoom_factor * 1.25)
+        self._apply_preview_zoom()
 
     def _zoom_out_preview(self):
-        """Zoom out preview image."""
-        # Implementation would scale the current pixmap smaller
-        pass
+        """Zoom out preview image by 25%."""
+        if self.current_item_index >= len(self.filtered_items):
+            return
+
+        item = self.filtered_items[self.current_item_index]
+        image_path = item.get("local_path", "")
+
+        if not image_path or not os.path.exists(image_path):
+            return
+
+        # Load original pixmap if not cached
+        if self._preview_original_pixmap is None:
+            self._preview_original_pixmap = QPixmap(image_path)
+            self._preview_zoom_factor = 1.0
+
+        if self._preview_original_pixmap.isNull():
+            return
+
+        # Decrease zoom
+        self._preview_zoom_factor = max(0.1, self._preview_zoom_factor / 1.25)
+        self._apply_preview_zoom()
+
+    def _apply_preview_zoom(self):
+        """Apply current zoom factor to preview."""
+        if self._preview_original_pixmap is None or self._preview_original_pixmap.isNull():
+            return
+
+        preview_size = self.preview_label.size()
+        base_width = preview_size.width() - 10
+        base_height = preview_size.height() - 10
+
+        # Calculate scaled size
+        scaled_width = int(base_width * self._preview_zoom_factor)
+        scaled_height = int(base_height * self._preview_zoom_factor)
+
+        scaled_pixmap = self._preview_original_pixmap.scaled(
+            scaled_width,
+            scaled_height,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.preview_label.setPixmap(scaled_pixmap)
 
     def _fit_preview_to_window(self):
         """Fit preview image to window."""
+        self._preview_zoom_factor = 1.0
+        self._preview_original_pixmap = None
+
         if self.current_item_index < len(self.filtered_items):
             item = self.filtered_items[self.current_item_index]
             self._update_image_preview(item)
 
     def _actual_size_preview(self):
-        """Show preview image at actual size."""
-        # Implementation would show image at 100% size
-        pass
+        """Show preview image at actual size (100%)."""
+        if self.current_item_index >= len(self.filtered_items):
+            return
+
+        item = self.filtered_items[self.current_item_index]
+        image_path = item.get("local_path", "")
+
+        if not image_path or not os.path.exists(image_path):
+            return
+
+        # Load original pixmap
+        self._preview_original_pixmap = QPixmap(image_path)
+        if self._preview_original_pixmap.isNull():
+            return
+
+        # Calculate zoom factor needed for actual size
+        preview_size = self.preview_label.size()
+        base_width = preview_size.width() - 10
+        base_height = preview_size.height() - 10
+
+        # Find fit scale
+        fit_width = base_width / self._preview_original_pixmap.width()
+        fit_height = base_height / self._preview_original_pixmap.height()
+        fit_factor = min(fit_width, fit_height)
+
+        # Actual size is inverse of fit factor
+        if fit_factor > 0:
+            self._preview_zoom_factor = 1.0 / fit_factor
+        else:
+            self._preview_zoom_factor = 1.0
+
+        self._apply_preview_zoom()
 
     # Metadata methods
     def _save_image_metadata(self):

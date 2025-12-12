@@ -1,0 +1,216 @@
+{
+    "common": {
+        "loading": "載入中...",
+        "error": "發生錯誤",
+        "success": "操作成功",
+        "confirm": "確認",
+        "cancel": "取消",
+        "save": "儲存",
+        "delete": "刪除",
+        "edit": "編輯",
+        "add": "新增",
+        "search": "搜尋",
+        "filter": "篩選",
+        "export": "匯出",
+        "import": "匯入",
+        "refresh": "重新整理",
+        "back": "返回",
+        "next": "下一步",
+        "previous": "上一步",
+        "close": "關閉",
+        "yes": "是",
+        "no": "否",
+        "all": "全部",
+        "none": "無",
+        "actions": "操作",
+        "settings": "設定",
+        "logout": "登出",
+        "login": "登入",
+        "noData": "沒有資料",
+        "loadMore": "載入更多"
+    },
+    "nav": {
+        "home": "首頁",
+        "characters": "角色列表",
+        "scraper": "爬蟲控制",
+        "charts": "圖表分析",
+        "media": "媒體庫",
+        "settings": "設定",
+        "help": "說明"
+    },
+    "home": {
+        "title": "儀表板",
+        "welcome": "歡迎使用 Fandom Scraper",
+        "totalCharacters": "總角色數",
+        "totalAnime": "動畫數量",
+        "recentUpdates": "最近更新",
+        "systemStatus": "系統狀態",
+        "quickActions": "快速操作",
+        "startScraper": "啟動爬蟲",
+        "viewCharacters": "瀏覽角色",
+        "recentCharacters": "最近爬取的角色"
+    },
+    "characters": {
+        "title": "角色列表",
+        "search": "搜尋角色...",
+        "filterByAnime": "依動畫篩選",
+        "sortBy": "排序",
+        "viewMode": "檢視模式",
+        "tableView": "表格檢視",
+        "cardView": "卡片檢視",
+        "treeView": "樹狀檢視",
+        "name": "名稱",
+        "anime": "動畫",
+        "description": "描述",
+        "quality": "品質",
+        "createdAt": "建立時間",
+        "updatedAt": "更新時間",
+        "tags": "標籤",
+        "noCharacters": "尚無角色資料",
+        "deleteConfirm": "確定要刪除此角色嗎？",
+        "deleteSuccess": "角色已刪除",
+        "batchDelete": "批次刪除",
+        "batchExport": "批次匯出",
+        "selectAll": "全選",
+        "selected": "已選擇 {{count}} 項",
+        "detail": {
+            "title": "角色詳情",
+            "basicInfo": "基本資訊",
+            "gallery": "圖片集",
+            "relationships": "角色關係",
+            "editCharacter": "編輯角色"
+        }
+    },
+    "scraper": {
+        "title": "爬蟲控制",
+        "status": "爬蟲狀態",
+        "idle": "閒置",
+        "running": "執行中",
+        "paused": "已暫停",
+        "stopped": "已停止",
+        "config": {
+            "title": "爬蟲設定",
+            "preset": "預設動畫",
+            "selectPreset": "選擇動畫預設",
+            "customUrl": "自訂 URL",
+            "baseUrl": "基礎 URL",
+            "characterListUrl": "角色列表 URL",
+            "delay": "請求延遲",
+            "delayHelp": "每次請求之間的延遲（秒）",
+            "retries": "重試次數",
+            "retriesHelp": "請求失敗時的重試次數",
+            "concurrent": "並發數",
+            "concurrentHelp": "同時進行的請求數量",
+            "selectors": "選擇器設定",
+            "advancedOptions": "進階選項"
+        },
+        "controls": {
+            "start": "啟動爬蟲",
+            "stop": "停止爬蟲",
+            "pause": "暫停",
+            "resume": "繼續"
+        },
+        "progress": {
+            "title": "爬取進度",
+            "total": "總計",
+            "completed": "已完成",
+            "failed": "失敗",
+            "remaining": "剩餘",
+            "speed": "速度",
+            "eta": "預計完成"
+        },
+        "logs": {
+            "title": "執行日誌",
+            "clear": "清除日誌",
+            "autoScroll": "自動捲動",
+            "level": {
+                "all": "全部",
+                "info": "資訊",
+                "warning": "警告",
+                "error": "錯誤"
+            }
+        },
+        "history": {
+            "title": "爬取歷史",
+            "date": "日期",
+            "anime": "動畫",
+            "count": "數量",
+            "duration": "耗時"
+        }
+    },
+    "charts": {
+        "title": "圖表分析",
+        "charactersByAnime": "角色分佈（依動畫）",
+        "qualityDistribution": "品質評分分佈",
+        "scrapingTimeline": "爬取時間線",
+        "tagCloud": "標籤雲",
+        "exportChart": "匯出圖表"
+    },
+    "media": {
+        "title": "媒體庫",
+        "allImages": "所有圖片",
+        "filterByCharacter": "依角色篩選",
+        "gridSize": "網格大小",
+        "small": "小",
+        "medium": "中",
+        "large": "大",
+        "slideshow": "幻燈片",
+        "download": "下載",
+        "downloadAll": "下載全部",
+        "viewOriginal": "檢視原圖",
+        "imageInfo": "圖片資訊",
+        "noImages": "尚無圖片"
+    },
+    "settings": {
+        "title": "設定",
+        "general": {
+            "title": "一般設定",
+            "language": "語言",
+            "theme": "主題",
+            "lightTheme": "淺色",
+            "darkTheme": "深色",
+            "autoTheme": "自動（跟隨系統）"
+        },
+        "api": {
+            "title": "API 設定",
+            "baseUrl": "API 基礎 URL",
+            "timeout": "請求超時（秒）"
+        },
+        "notifications": {
+            "title": "通知設定",
+            "enableNotifications": "啟用通知",
+            "soundEnabled": "音效提示"
+        }
+    },
+    "auth": {
+        "login": "登入",
+        "logout": "登出",
+        "username": "使用者名稱",
+        "password": "密碼",
+        "rememberMe": "記住我",
+        "forgotPassword": "忘記密碼？",
+        "loginSuccess": "登入成功",
+        "loginFailed": "登入失敗",
+        "invalidCredentials": "帳號或密碼錯誤",
+        "sessionExpired": "登入已過期，請重新登入"
+    },
+    "errors": {
+        "networkError": "網路連線錯誤",
+        "serverError": "伺服器錯誤",
+        "notFound": "找不到資源",
+        "unauthorized": "未授權，請重新登入",
+        "forbidden": "沒有權限執行此操作",
+        "validationError": "資料驗證錯誤",
+        "unknownError": "發生未知錯誤"
+    },
+    "pagination": {
+        "page": "頁",
+        "of": "共",
+        "items": "項",
+        "perPage": "每頁",
+        "first": "第一頁",
+        "last": "最後一頁",
+        "prev": "上一頁",
+        "next": "下一頁"
+    }
+}
