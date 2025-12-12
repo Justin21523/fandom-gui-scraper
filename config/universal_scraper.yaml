@@ -1,0 +1,356 @@
+# Universal Fandom Scraper Configuration
+# This configuration file controls the behavior of the universal Fandom scraper system
+
+# Brave Search API configuration
+brave_search:
+  # Environment variable containing API key
+  api_key_env: "BRAVE_API_KEY"
+
+  # Rate limiting settings
+  rate_limit:
+    calls_per_second: 15  # Free tier: 15 requests/second
+    calls_per_month: 2000  # Free tier: 2000 requests/month
+
+  # Caching configuration
+  cache:
+    enabled: true
+    ttl_hours: 24  # Cache results for 24 hours
+    cache_dir: ".cache/brave_search"
+
+  # Search parameters
+  search_params:
+    count: 10  # Number of results per search
+    freshness: null  # null, "24h", "week", "month"
+    safesearch: "moderate"  # "off", "moderate", "strict"
+
+  # URL validation rules
+  validation:
+    # Allowed URL patterns (regex)
+    allowed_patterns:
+      - "^https?://[a-z0-9-]+\\.fandom\\.com"
+
+    # Preferred URL paths (URLs with these get higher scores)
+    required_paths:
+      - "/wiki/"
+
+    # Blocked URL patterns
+    blocked_keywords:
+      - "/Special:"
+      - "/User:"
+      - "/User_blog:"
+      - "/User_talk:"
+      - "/Talk:"
+      - "/Template:"
+      - "/Template_talk:"
+
+# Storage configuration (AI_WAREHOUSE 3.0 structure)
+storage:
+  # Base path for all Fandom data
+  base_path: "/mnt/data/datasets/fandom"
+
+  # Directory structure within each anime folder
+  structure:
+    metadata_dir: "metadata"
+    characters_dir: "characters"
+    episodes_dir: "episodes"
+    chapters_dir: "chapters"
+    images_dir: "images"
+    gallery_dir: "gallery"
+
+  # Export formats
+  export_formats:
+    - "json"      # Always export JSON files
+    - "mongodb"   # Also store in MongoDB
+
+  # Automatic backup configuration
+  backup:
+    enabled: true
+    schedule: "daily"  # "hourly", "daily", "weekly", "monthly"
+    backup_dir: "mongodb_backups"
+    compress: true  # Use gzip compression
+    retention_days: 30  # Keep backups for 30 days
+
+  # Image organization
+  images:
+    # Subdirectories under images/
+    character_images: "characters/{character_name}"
+    episode_images: "episodes/ep_{episode_num}"
+    gallery_images: "galleries/{category}"
+    thumbnails: "thumbnails"
+
+    # Image formats to download
+    allowed_formats:
+      - "jpg"
+      - "jpeg"
+      - "png"
+      - "webp"
+      - "gif"
+
+    # Maximum image dimensions (pixels)
+    max_width: 4096
+    max_height: 4096
+
+    # Generate thumbnails
+    generate_thumbnails: true
+    thumbnail_size: [300, 300]  # Width x Height
+
+# Crawl category configurations
+crawl_categories:
+  # Character pages
+  characters:
+    enabled_by_default: true
+
+    # Category pages to search for character links
+    category_pages:
+      - "Category:Characters"
+      - "Characters"
+      - "List_of_Characters"
+      - "Character_List"
+
+    # Default maximum characters to scrape (0 = unlimited)
+    max_default: 100
+
+    # Minimum data completeness to save (0.0-1.0)
+    min_quality_score: 0.3
+
+  # Episode pages
+  episodes:
+    enabled_by_default: true
+
+    category_pages:
+      - "Category:Episodes"
+      - "Episodes"
+      - "Episode_List"
+      - "List_of_Episodes"
+
+    max_default: 50
+
+    # Extract episode screenshots
+    extract_screenshots: true
+    max_screenshots_per_episode: 5
+
+  # Gallery/Image pages
+  galleries:
+    enabled_by_default: true
+
+    category_pages:
+      - "Category:Images"
+      - "Category:Gallery"
+      - "Gallery"
+      - "Images"
+
+    max_default: 200
+
+    # Image categories to prioritize
+    priority_categories:
+      - "concept_art"
+      - "character_design"
+      - "promotional"
+      - "poster"
+
+  # Chapter pages (for manga-based series)
+  chapters:
+    enabled_by_default: false  # Disabled by default
+
+    category_pages:
+      - "Category:Chapters"
+      - "Chapters"
+      - "Chapter_List"
+      - "List_of_Chapters"
+
+    max_default: 50
+
+    # Extract manga panels
+    extract_panels: false  # Can be large
+
+# Page type detection
+page_detection:
+  # URL pattern matching (regex)
+  url_patterns:
+    character:
+      - "^/wiki/(?!Episode_|Chapter_|Gallery|Category:)[A-Z].*"
+      - "^/wiki/.*_\\(character\\)"
+
+    episode:
+      - "^/wiki/Episode_\\d+"
+      - "^/wiki/.*_\\(Episode\\)"
+      - "^/wiki/Episode_.*"
+
+    gallery:
+      - "^/wiki/.*_Gallery$"
+      - "^/wiki/Gallery"
+      - "^/wiki/.*_(gallery|images)"
+
+    chapter:
+      - "^/wiki/Chapter_\\d+"
+      - "^/wiki/.*_\\(Chapter\\)"
+
+    category:
+      - "^/wiki/Category:"
+
+  # Content selectors (CSS)
+  content_selectors:
+    character:
+      - ".character-infobox"
+      - ".pi-theme-character"
+      - ".portable-infobox.pi-theme-character"
+      - '[data-source="character"]'
+
+    episode:
+      - ".episode-infobox"
+      - ".pi-theme-episode"
+      - ".portable-infobox.pi-theme-episode"
+      - '[data-source="episode"]'
+
+    gallery:
+      - ".gallery-image-wrapper"
+      - ".wikia-gallery"
+      - ".lightbox-gallery"
+
+# Crawl limits and controls
+limits:
+  # Maximum recursive depth from category pages
+  max_depth: 3
+
+  # Hard limit on pages per category (safety measure)
+  max_pages_per_category: 10000
+
+  # Request retry settings
+  max_retries: 3
+  retry_delay: 5  # seconds
+
+  # Request timeout
+  timeout_seconds: 30
+
+  # Rate limiting
+  rate_limiting:
+    # Delay between requests (seconds)
+    delay_between_requests: 1.0
+
+    # Randomize delay to avoid patterns
+    randomize_delay: true
+    delay_range: [0.5, 2.0]  # Min and max delay when randomized
+
+    # Concurrent requests
+    concurrent_requests: 8
+    concurrent_requests_per_domain: 2
+
+  # Memory limits
+  memory:
+    # Maximum items to keep in memory before flushing to storage
+    max_items_in_memory: 1000
+
+    # Maximum cache size (MB)
+    max_cache_size_mb: 500
+
+# Data quality settings
+quality:
+  # Minimum quality scores to save
+  min_character_quality: 0.3
+  min_episode_quality: 0.2
+  min_gallery_image_quality: 0.1
+
+  # Required fields for different content types
+  required_fields:
+    character:
+      - "name"
+      - "anime_name"
+      - "source_url"
+
+    episode:
+      - "title"
+      - "number"
+      - "anime_name"
+      - "source_url"
+
+    gallery_image:
+      - "url"
+      - "anime_name"
+      - "source_url"
+
+  # Validation rules
+  validation:
+    # Maximum length for text fields
+    max_description_length: 5000
+    max_synopsis_length: 5000
+    max_caption_length: 1000
+
+    # URL validation
+    validate_urls: true
+    check_url_accessibility: false  # Don't check if URLs are accessible (slow)
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+
+  # Log file paths
+  log_dir: "logs"
+  scraper_log: "logs/scraper.log"
+  error_log: "logs/errors.log"
+
+  # Log rotation
+  rotate_logs: true
+  max_log_size_mb: 100
+  backup_count: 5  # Keep 5 old log files
+
+  # Console logging
+  console_logging: true
+  console_level: "INFO"
+
+# Progress tracking and reporting
+progress:
+  # Update frequency for progress callbacks (items)
+  update_frequency: 10
+
+  # Enable detailed progress tracking
+  detailed_tracking: true
+
+  # Save progress snapshots
+  save_snapshots: true
+  snapshot_frequency: 100  # Every 100 items
+
+  # Progress file location
+  progress_file: "progress.json"
+
+# Error handling
+error_handling:
+  # Continue on errors or stop
+  continue_on_error: true
+
+  # Maximum errors before stopping
+  max_errors: 100
+
+  # Error reporting
+  report_errors: true
+  error_report_file: "error_report.json"
+
+  # Retry failed items at end
+  retry_failed_items: true
+
+# Advanced options
+advanced:
+  # Use multiprocessing for image downloads
+  multiprocess_downloads: true
+  download_workers: 4
+
+  # Cache parsed pages
+  cache_parsed_pages: true
+  parsed_page_cache_size: 1000
+
+  # Deduplicate URLs in real-time
+  realtime_deduplication: true
+
+  # Extract additional metadata
+  extract_metadata:
+    - "keywords"
+    - "author"
+    - "publish_date"
+    - "last_modified"
+
+  # User agent rotation
+  user_agent_rotation: true
+  user_agents:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"

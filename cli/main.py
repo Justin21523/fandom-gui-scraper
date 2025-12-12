@@ -631,6 +631,162 @@ def list_backups():
         raise typer.Exit(1)
 
 
+@app.command("scrape-fandom")
+def scrape_fandom(
+    input_source: str = typer.Argument(
+        ...,
+        help="Anime name or Fandom URL"
+    ),
+    input_type: str = typer.Option(
+        "name",
+        "--type", "-t",
+        help="Input type: 'name' or 'url'"
+    ),
+    max_chars: int = typer.Option(
+        100,
+        "--max-chars",
+        help="Max characters to scrape (0 = unlimited)"
+    ),
+    max_eps: int = typer.Option(
+        50,
+        "--max-episodes",
+        help="Max episodes to scrape (0 = unlimited)"
+    ),
+    max_gallery: int = typer.Option(
+        200,
+        "--max-gallery",
+        help="Max gallery images (0 = unlimited)"
+    ),
+    max_chapters: int = typer.Option(
+        0,
+        "--max-chapters",
+        help="Max chapters to scrape (0 = unlimited)"
+    ),
+    crawl_characters: bool = typer.Option(
+        True,
+        "--characters/--no-characters",
+        help="Crawl character pages"
+    ),
+    crawl_episodes: bool = typer.Option(
+        True,
+        "--episodes/--no-episodes",
+        help="Crawl episode pages"
+    ),
+    crawl_galleries: bool = typer.Option(
+        True,
+        "--galleries/--no-galleries",
+        help="Crawl gallery pages"
+    ),
+    crawl_chapters: bool = typer.Option(
+        False,
+        "--chapters/--no-chapters",
+        help="Crawl chapter pages"
+    ),
+    all_categories: bool = typer.Option(
+        False,
+        "--all",
+        help="Enable all categories with no limits"
+    ),
+):
+    """
+    Universal Fandom scraper with search support.
+
+    Examples:
+        # Using anime name (Brave Search)
+        fandom-scraper scrape-fandom "Attack on Titan" --max-chars 100
+
+        # Using direct URL
+        fandom-scraper scrape-fandom "https://onepiece.fandom.com" --type url --all
+
+        # Custom scope
+        fandom-scraper scrape-fandom "Naruto" --episodes --galleries --no-characters
+
+        # Complete example
+        fandom-scraper scrape-fandom "One Piece" \\
+          --type name \\
+          --max-chars 200 \\
+          --max-episodes 100 \\
+          --max-gallery 500 \\
+          --characters \\
+          --episodes \\
+          --galleries
+    """
+    import os
+
+    if all_categories:
+        max_chars = max_eps = max_gallery = max_chapters = 0
+        crawl_characters = crawl_episodes = crawl_galleries = crawl_chapters = True
+
+    # Validate Brave API key if using name
+    if input_type == "name" and not os.getenv("BRAVE_API_KEY"):
+        console.print("[red]Error:[/red] BRAVE_API_KEY not found in environment")
+        console.print("Please set BRAVE_API_KEY in your ~/.bashrc or environment")
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold blue]Universal Fandom Scraper[/bold blue]\n"
+        f"Input: {input_source}\n"
+        f"Type: {input_type}",
+        title="Scraping Configuration",
+        expand=False
+    ))
+
+    try:
+        from scraper.universal_fandom_spider import UniversalFandomSpider
+        from scrapy.crawler import CrawlerProcess
+        from scrapy.utils.project import get_project_settings
+
+        # Get settings
+        settings = get_project_settings()
+
+        # Create crawler process
+        process = CrawlerProcess(settings)
+
+        # Spider configuration
+        spider_kwargs = {
+            'input_source': input_source,
+            'input_type': input_type,
+            'crawl_characters': crawl_characters,
+            'crawl_episodes': crawl_episodes,
+            'crawl_galleries': crawl_galleries,
+            'crawl_chapters': crawl_chapters,
+            'max_chars': max_chars,
+            'max_episodes': max_eps,
+            'max_gallery_images': max_gallery,
+            'max_chapters': max_chapters,
+        }
+
+        # Display config
+        console.print("\n[bold]Crawl Configuration:[/bold]")
+        enabled = []
+        if crawl_characters:
+            enabled.append(f"Characters (max: {max_chars if max_chars > 0 else 'unlimited'})")
+        if crawl_episodes:
+            enabled.append(f"Episodes (max: {max_eps if max_eps > 0 else 'unlimited'})")
+        if crawl_galleries:
+            enabled.append(f"Galleries (max: {max_gallery if max_gallery > 0 else 'unlimited'})")
+        if crawl_chapters:
+            enabled.append(f"Chapters (max: {max_chapters if max_chapters > 0 else 'unlimited'})")
+
+        for item in enabled:
+            console.print(f"  • {item}")
+
+        console.print("\n[yellow]Starting spider...[/yellow]\n")
+
+        # Start crawling
+        process.crawl(UniversalFandomSpider, **spider_kwargs)
+        process.start()
+
+        console.print("\n[green]✓ Scraping completed successfully![/green]")
+
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Scraping interrupted by user[/yellow]")
+        raise typer.Exit(130)
+    except Exception as e:
+        console.print(f"\n[red]Error during scraping:[/red] {e}")
+        raise typer.Exit(1)
+
+
 @app.command()
 def version():
     """Display version information."""
