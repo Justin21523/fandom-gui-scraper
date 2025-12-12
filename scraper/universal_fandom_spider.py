@@ -218,7 +218,9 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
             max_chapters: Max chapters to scrape
             **kwargs: Additional spider arguments
         """
-        self.logger = get_logger(self.__class__.__name__)
+        # Note: Don't set self.logger directly as Scrapy Spider has read-only logger property
+        # The spider.logger will be automatically available from Scrapy
+        # If custom logger needed, access via get_logger() in methods
 
         # Discover wiki URL if input is name
         if input_type == "name":
