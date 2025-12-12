@@ -213,7 +213,47 @@ class ScraperConfigWidget(QWidget):
         self.anime_combo.currentTextChanged.connect(self.on_anime_changed)
         target_layout.addRow("Anime/Series:", self.anime_combo)
 
-        # Base URL
+        # Input type selection (URL vs Name)
+        input_type_layout = QHBoxLayout()
+        self.input_type_url_radio = QPushButton("Direct URL")
+        self.input_type_url_radio.setCheckable(True)
+        self.input_type_name_radio = QPushButton("Anime Name (Search)")
+        self.input_type_name_radio.setCheckable(True)
+        self.input_type_name_radio.setChecked(True)  # Default to name search
+
+        input_type_layout.addWidget(self.input_type_url_radio)
+        input_type_layout.addWidget(self.input_type_name_radio)
+        input_type_layout.addStretch()
+
+        self.input_type_url_radio.clicked.connect(self._on_input_type_url_clicked)
+        self.input_type_name_radio.clicked.connect(self._on_input_type_name_clicked)
+
+        target_layout.addRow("Input Type:", input_type_layout)
+
+        # Input field (URL or Name based on selection)
+        self.input_field = QLineEdit()
+        self.input_field.setPlaceholderText("Enter anime name (e.g., 'Attack on Titan')")
+        self.input_field.textChanged.connect(self.on_config_changed)
+        target_layout.addRow("Input:", self.input_field)
+
+        # Search button (for name input)
+        search_layout = QHBoxLayout()
+        self.search_btn = QPushButton("Search Fandom Wikis")
+        self.search_btn.clicked.connect(self._search_fandom_wikis)
+        search_layout.addWidget(self.search_btn)
+
+        self.search_status = QLabel("")
+        search_layout.addWidget(self.search_status)
+        search_layout.addStretch()
+        target_layout.addRow(search_layout)
+
+        # Search results dropdown (populated after search)
+        self.search_results_combo = QComboBox()
+        self.search_results_combo.setVisible(False)
+        self.search_results_combo.currentIndexChanged.connect(self._on_wiki_selected)
+        target_layout.addRow("Select Wiki:", self.search_results_combo)
+
+        # Base URL (auto-filled or manual)
         self.base_url_edit = QLineEdit()
         self.base_url_edit.setPlaceholderText("https://onepiece.fandom.com/wiki/")
         self.base_url_edit.textChanged.connect(self.on_config_changed)
@@ -287,6 +327,60 @@ class ScraperConfigWidget(QWidget):
         limits_layout.addRow("Max Images per Character:", self.max_images_spin)
 
         layout.addWidget(limits_group)
+
+        # Crawl scope selection (new for universal spider)
+        crawl_scope_group = QGroupBox("Crawl Scope")
+        crawl_scope_layout = QVBoxLayout(crawl_scope_group)
+
+        self.crawl_characters_check = QCheckBox("Crawl Character Pages")
+        self.crawl_characters_check.setChecked(True)
+        self.crawl_characters_check.toggled.connect(self.on_config_changed)
+        crawl_scope_layout.addWidget(self.crawl_characters_check)
+
+        self.crawl_episodes_check = QCheckBox("Crawl Episode Pages")
+        self.crawl_episodes_check.setChecked(True)
+        self.crawl_episodes_check.toggled.connect(self.on_config_changed)
+        crawl_scope_layout.addWidget(self.crawl_episodes_check)
+
+        self.crawl_galleries_check = QCheckBox("Crawl Gallery Pages")
+        self.crawl_galleries_check.setChecked(True)
+        self.crawl_galleries_check.toggled.connect(self.on_config_changed)
+        crawl_scope_layout.addWidget(self.crawl_galleries_check)
+
+        self.crawl_chapters_check = QCheckBox("Crawl Chapter Pages (Manga)")
+        self.crawl_chapters_check.setChecked(False)
+        self.crawl_chapters_check.toggled.connect(self.on_config_changed)
+        crawl_scope_layout.addWidget(self.crawl_chapters_check)
+
+        layout.addWidget(crawl_scope_group)
+
+        # Category-specific limits
+        limits_detail_group = QGroupBox("Category Limits")
+        limits_detail_layout = QFormLayout(limits_detail_group)
+
+        self.max_episodes_spin = QSpinBox()
+        self.max_episodes_spin.setRange(0, 5000)
+        self.max_episodes_spin.setValue(50)
+        self.max_episodes_spin.setSpecialValueText("Unlimited")
+        self.max_episodes_spin.valueChanged.connect(self.on_config_changed)
+        limits_detail_layout.addRow("Max Episodes:", self.max_episodes_spin)
+
+        self.max_gallery_spin = QSpinBox()
+        self.max_gallery_spin.setRange(0, 10000)
+        self.max_gallery_spin.setValue(200)
+        self.max_gallery_spin.setSpecialValueText("Unlimited")
+        self.max_gallery_spin.valueChanged.connect(self.on_config_changed)
+        limits_detail_layout.addRow("Max Gallery Images:", self.max_gallery_spin)
+
+        self.max_chapters_spin = QSpinBox()
+        self.max_chapters_spin.setRange(0, 5000)
+        self.max_chapters_spin.setValue(50)
+        self.max_chapters_spin.setSpecialValueText("Unlimited")
+        self.max_chapters_spin.valueChanged.connect(self.on_config_changed)
+        limits_detail_layout.addRow("Max Chapters:", self.max_chapters_spin)
+
+        layout.addWidget(limits_detail_group)
+
         layout.addStretch()
 
         self.tab_widget.addTab(tab, "Target & Limits")
@@ -1429,3 +1523,141 @@ class ScraperConfigWidget(QWidget):
         current_row = self.custom_fields_table.currentRow()
         if current_row >= 0:
             self.custom_fields_table.removeRow(current_row)
+
+    # New methods for Universal Spider support
+
+    @pyqtSlot()
+    def _on_input_type_url_clicked(self):
+        """Handle URL input type selection."""
+        self.input_type_url_radio.setChecked(True)
+        self.input_type_name_radio.setChecked(False)
+
+        # Update UI
+        self.input_field.setPlaceholderText("Enter Fandom URL (e.g., https://onepiece.fandom.com)")
+        self.search_btn.setVisible(False)
+        self.search_results_combo.setVisible(False)
+        self.search_status.setText("")
+
+    @pyqtSlot()
+    def _on_input_type_name_clicked(self):
+        """Handle name input type selection."""
+        self.input_type_name_radio.setChecked(True)
+        self.input_type_url_radio.setChecked(False)
+
+        # Update UI
+        self.input_field.setPlaceholderText("Enter anime name (e.g., 'Attack on Titan')")
+        self.search_btn.setVisible(True)
+        self.search_results_combo.setVisible(False)
+        self.search_status.setText("")
+
+    @pyqtSlot()
+    def _search_fandom_wikis(self):
+        """Search for Fandom wikis using Brave Search."""
+        anime_name = self.input_field.text().strip()
+        if not anime_name:
+            QMessageBox.warning(self, "Input Required", "Please enter an anime name.")
+            return
+
+        # Show progress
+        self.search_btn.setEnabled(False)
+        self.search_btn.setText("Searching...")
+        self.search_status.setText("Searching Fandom wikis...")
+        self.search_status.setStyleSheet("color: orange;")
+
+        # Create worker thread for search
+        self._search_thread = QThread()
+        self._search_worker = BraveSearchWorker(anime_name)
+        self._search_worker.moveToThread(self._search_thread)
+
+        self._search_thread.started.connect(self._search_worker.run)
+        self._search_worker.finished.connect(self._on_search_finished)
+        self._search_worker.error.connect(self._on_search_error)
+        self._search_worker.finished.connect(self._search_thread.quit)
+        self._search_worker.finished.connect(self._search_worker.deleteLater)
+        self._search_thread.finished.connect(self._search_thread.deleteLater)
+
+        self._search_thread.start()
+        self.logger.info(f"Searching for Fandom wiki: {anime_name}")
+
+    @pyqtSlot(list)
+    def _on_search_finished(self, results):
+        """Handle search results."""
+        self.search_btn.setEnabled(True)
+        self.search_btn.setText("Search Fandom Wikis")
+
+        if not results:
+            self.search_status.setText("No Fandom wikis found")
+            self.search_status.setStyleSheet("color: red;")
+            QMessageBox.information(
+                self,
+                "No Results",
+                "No Fandom wikis found. Try a direct URL instead."
+            )
+            return
+
+        self.search_status.setText(f"Found {len(results)} wiki(s)")
+        self.search_status.setStyleSheet("color: green;")
+
+        # Populate dropdown with results
+        self.search_results_combo.clear()
+        for result in results:
+            display_text = f"{result['title']} ({result['score']:.0f}%)"
+            self.search_results_combo.addItem(display_text, result['url'])
+
+        self.search_results_combo.setVisible(True)
+        self.logger.info(f"Found {len(results)} Fandom wikis")
+
+    @pyqtSlot(str)
+    def _on_search_error(self, error_msg):
+        """Handle search error."""
+        self.search_btn.setEnabled(True)
+        self.search_btn.setText("Search Fandom Wikis")
+        self.search_status.setText(f"Search failed: {error_msg}")
+        self.search_status.setStyleSheet("color: red;")
+
+        QMessageBox.critical(self, "Search Error", f"Failed to search:\n{error_msg}")
+        self.logger.error(f"Brave Search error: {error_msg}")
+
+    @pyqtSlot(int)
+    def _on_wiki_selected(self, index):
+        """Handle wiki selection from dropdown."""
+        if index >= 0:
+            url = self.search_results_combo.itemData(index)
+            if url:
+                self.base_url_edit.setText(url)
+                self.logger.info(f"Selected wiki: {url}")
+
+
+class BraveSearchWorker(QObject):
+    """Worker for Brave Search in background thread."""
+
+    finished = pyqtSignal(list)  # results
+    error = pyqtSignal(str)  # error message
+
+    def __init__(self, anime_name: str):
+        super().__init__()
+        self.anime_name = anime_name
+
+    def run(self):
+        """Execute Brave Search."""
+        try:
+            from utils.brave_search import BraveSearchClient
+
+            client = BraveSearchClient()
+            results = client.find_fandom_wiki(self.anime_name, top_n=5)
+
+            # Convert to dict for Qt signal
+            results_data = [
+                {
+                    'url': r.url,
+                    'title': r.title,
+                    'score': r.relevance_score,
+                    'domain': r.domain
+                }
+                for r in results
+            ]
+
+            self.finished.emit(results_data)
+
+        except Exception as e:
+            self.error.emit(str(e))

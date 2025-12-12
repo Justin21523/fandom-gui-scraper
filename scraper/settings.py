@@ -55,7 +55,24 @@ MONGO_DATABASE = os.getenv("MONGO_DATABASE", "fandom_scraper")
 
 # Image Storage Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
-IMAGES_STORE = str(PROJECT_ROOT / "storage" / "images")
+
+# AI_WAREHOUSE 3.0 Storage Structure
+FANDOM_DATA_ROOT = Path(os.getenv("FANDOM_DATA_ROOT", "/mnt/data/datasets/fandom"))
+
+# Storage paths - will be formatted with anime_name at runtime
+IMAGES_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "images")
+METADATA_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "metadata")
+EPISODES_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "episodes")
+CHAPTERS_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "chapters")
+GALLERIES_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "gallery")
+CHARACTERS_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "characters")
+BACKUP_STORE = str(FANDOM_DATA_ROOT / "mongodb_backups")
+
+# Legacy storage (for backward compatibility)
+LEGACY_IMAGES_STORE = str(PROJECT_ROOT / "storage" / "images")
+LEGACY_FILES_STORE = str(PROJECT_ROOT / "storage" / "files")
+
+# Image settings
 IMAGES_EXPIRES = 365  # Days to keep images
 IMAGES_THUMBS = {
     "small": (50, 50),
@@ -67,6 +84,9 @@ IMAGES_THUMBS = {
 FILES_STORE = str(PROJECT_ROOT / "storage" / "files")
 FILES_EXPIRES = 90
 
+# Enable file export alongside MongoDB
+ENABLE_FILE_EXPORT = os.getenv("ENABLE_FILE_EXPORT", "true").lower() == "true"
+
 # Configure Pipelines (order matters!)
 ITEM_PIPELINES = {
     # Data validation and normalization (first)
@@ -76,8 +96,10 @@ ITEM_PIPELINES = {
     "scraper.pipelines.ImageDownloadPipeline": 300,
     # Quality assessment
     "scraper.pipelines.DataQualityPipeline": 400,
-    # Database storage (last)
+    # Database storage
     "scraper.pipelines.DataStoragePipeline": 500,
+    # File export (JSON alongside MongoDB)
+    "scraper.pipelines.FileExportPipeline": 600,
 }
 
 # Configure Middlewares
