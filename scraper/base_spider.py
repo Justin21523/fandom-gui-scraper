@@ -90,8 +90,9 @@ class BaseSpider(scrapy.Spider):
         self.selector_config = self._load_selector_config()
         self.spider_config = self._load_spider_config()
 
-        # Initialize logger
-        self.logger = get_logger(self.__class__.__name__)  # type: ignore
+        # Note: Scrapy Spider has read-only logger property
+        # Use self.logger (provided by Scrapy automatically) for logging
+        # Don't override it to avoid "can't set attribute" error in tests
 
         self.logger.info(f"Initialized {self.name} spider for anime: {anime_name}")
 
