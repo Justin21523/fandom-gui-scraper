@@ -202,7 +202,8 @@ class DataValidationPipeline:
         try:
             result = urlparse(url)
             return all([result.scheme, result.netloc])
-        except:
+        except (ValueError, AttributeError) as e:
+            self.logger.debug(f"URL validation failed for '{url}': {e}")
             return False
 
     def close_spider(self, spider):
@@ -476,7 +477,8 @@ class ImageDownloadPipeline(ImagesPipeline):
             parsed = urlparse(url)
             if not all([parsed.scheme, parsed.netloc]):
                 return False
-        except:
+        except (ValueError, AttributeError) as e:
+            self.logger.debug(f"Image URL validation failed for '{url}': {e}")
             return False
 
         # Check for image file extensions

@@ -40,11 +40,90 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QSizePolicy,
 )
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt, QTimer, QThread
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt, QTimer, QThread, QObject
 from PyQt6.QtGui import QFont, QIntValidator, QDoubleValidator, QIcon
 
 from utils.logger import get_logger
 from utils.config_manager import ConfigManager
+
+
+class DatabaseTestWorker(QObject):
+    """Worker for testing database connections in background thread."""
+
+    finished = pyqtSignal(bool, str)  # success, message
+    progress = pyqtSignal(str)  # status message
+
+    def __init__(self, uri: str, db_name: str, collection_name: str = ""):
+        super().__init__()
+        self.uri = uri
+        self.db_name = db_name
+        self.collection_name = collection_name
+
+    def run(self):
+        """Test the database connection."""
+        try:
+            self.progress.emit("Connecting to MongoDB...")
+
+            from pymongo import MongoClient
+            from pymongo.errors import (
+                ConnectionFailure,
+                ServerSelectionTimeoutError,
+                ConfigurationError,
+                OperationFailure
+            )
+
+            # Create client with timeout
+            client = MongoClient(
+                self.uri,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=5000,
+                socketTimeoutMS=5000,
+            )
+
+            self.progress.emit("Verifying connection...")
+
+            # Test connection with ping
+            client.admin.command("ping")
+
+            self.progress.emit("Accessing database...")
+
+            # Access the database
+            db = client[self.db_name]
+
+            # List collections to verify access
+            collections = db.list_collection_names()
+
+            # Check if specific collection exists
+            collection_info = ""
+            if self.collection_name:
+                if self.collection_name in collections:
+                    # Get collection stats
+                    col = db[self.collection_name]
+                    doc_count = col.count_documents({})
+                    collection_info = f" | Collection '{self.collection_name}': {doc_count} documents"
+                else:
+                    collection_info = f" | Collection '{self.collection_name}' will be created"
+
+            # Get server info
+            server_info = client.server_info()
+            version = server_info.get("version", "Unknown")
+
+            # Close the connection
+            client.close()
+
+            msg = f"Connected (MongoDB v{version}, {len(collections)} collections){collection_info}"
+            self.finished.emit(True, msg)
+
+        except ServerSelectionTimeoutError:
+            self.finished.emit(False, "Connection timeout - check if MongoDB is running")
+        except ConnectionFailure as e:
+            self.finished.emit(False, f"Connection failed: {str(e)[:50]}")
+        except ConfigurationError as e:
+            self.finished.emit(False, f"Invalid URI format: {str(e)[:50]}")
+        except OperationFailure as e:
+            self.finished.emit(False, f"Authentication failed: {str(e)[:50]}")
+        except Exception as e:
+            self.finished.emit(False, f"Error: {str(e)[:50]}")
 
 
 class ScraperConfigWidget(QWidget):
@@ -1282,6 +1361,7 @@ class ScraperConfigWidget(QWidget):
         """Test database connection."""
         uri = self.mongo_uri_edit.text().strip()
         db_name = self.db_name_edit.text().strip()
+        collection_name = self.collection_name_edit.text().strip()
 
         if not uri or not db_name:
             self.db_status_label.setText("Invalid parameters")
@@ -1292,15 +1372,41 @@ class ScraperConfigWidget(QWidget):
         self.db_status_label.setStyleSheet("color: orange;")
         self.test_db_btn.setEnabled(False)
 
-        # TODO: Implement database connection test
-        # For now, simulate a successful connection
-        QTimer.singleShot(2000, self._simulate_db_test_success)
+        # Create worker and thread for background testing
+        self._db_test_thread = QThread()
+        self._db_test_worker = DatabaseTestWorker(uri, db_name, collection_name)
+        self._db_test_worker.moveToThread(self._db_test_thread)
 
-    def _simulate_db_test_success(self):
-        """Simulate successful database test."""
-        self.db_status_label.setText("Connected successfully")
-        self.db_status_label.setStyleSheet("color: green;")
+        # Connect signals
+        self._db_test_thread.started.connect(self._db_test_worker.run)
+        self._db_test_worker.progress.connect(self._on_db_test_progress)
+        self._db_test_worker.finished.connect(self._on_db_test_finished)
+        self._db_test_worker.finished.connect(self._db_test_thread.quit)
+        self._db_test_worker.finished.connect(self._db_test_worker.deleteLater)
+        self._db_test_thread.finished.connect(self._db_test_thread.deleteLater)
+
+        # Start the test
+        self._db_test_thread.start()
+        self.logger.info(f"Testing database connection to {db_name}")
+
+    @pyqtSlot(str)
+    def _on_db_test_progress(self, message: str):
+        """Handle database test progress updates."""
+        self.db_status_label.setText(message)
+
+    @pyqtSlot(bool, str)
+    def _on_db_test_finished(self, success: bool, message: str):
+        """Handle database test completion."""
         self.test_db_btn.setEnabled(True)
+
+        if success:
+            self.db_status_label.setText(message)
+            self.db_status_label.setStyleSheet("color: green;")
+            self.logger.info(f"Database connection successful: {message}")
+        else:
+            self.db_status_label.setText(message)
+            self.db_status_label.setStyleSheet("color: red;")
+            self.logger.warning(f"Database connection failed: {message}")
 
     @pyqtSlot()
     def add_custom_field(self):

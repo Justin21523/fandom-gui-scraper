@@ -11,8 +11,9 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime
+from urllib.parse import quote_plus
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -33,12 +34,37 @@ class DatabaseConfig:
     server_selection_timeout: int = 3000
 
     def get_connection_string(self) -> str:
-        """Build MongoDB connection string."""
+        """
+        Build MongoDB connection string with proper credential encoding.
+
+        Note: Credentials are URL-encoded to handle special characters safely.
+        Use get_masked_connection_string() for logging purposes.
+        """
         if self.uri:
             return self.uri
 
         if self.username and self.password:
-            return f"mongodb://{self.username}:{self.password}@{self.host}:{self.port}/"
+            # URL-encode credentials to handle special characters
+            encoded_username = quote_plus(self.username)
+            encoded_password = quote_plus(self.password)
+            return f"mongodb://{encoded_username}:{encoded_password}@{self.host}:{self.port}/"
+        else:
+            return f"mongodb://{self.host}:{self.port}/"
+
+    def get_masked_connection_string(self) -> str:
+        """
+        Get connection string with password masked for safe logging.
+
+        Returns:
+            Connection string with password replaced by asterisks.
+        """
+        if self.uri:
+            # Mask password in URI if present
+            import re
+            return re.sub(r'(://[^:]+:)[^@]+(@)', r'\1****\2', self.uri)
+
+        if self.username and self.password:
+            return f"mongodb://{self.username}:****@{self.host}:{self.port}/"
         else:
             return f"mongodb://{self.host}:{self.port}/"
 
@@ -54,7 +80,7 @@ class ScrapingConfig:
     user_agent: str = "FandomScraper/1.0 (+https://github.com/user/fandom-scraper)"
     respect_robots_txt: bool = True
     enable_auto_throttling: bool = True
-    download_delay_range: tuple = (0.5, 1.5)
+    download_delay_range: list = field(default_factory=lambda: [0.5, 1.5])
     max_concurrent_requests_per_domain: int = 1
 
 

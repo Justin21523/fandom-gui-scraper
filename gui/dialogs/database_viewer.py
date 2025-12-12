@@ -1281,7 +1281,7 @@ def _save_language_preference(self, language: str):
             try:
                 with open(settings_file, "r", encoding="utf-8") as f:
                     settings = json.load(f)
-            except:
+            except (json.JSONDecodeError, IOError, OSError):
                 settings = {}
 
         # Update language setting

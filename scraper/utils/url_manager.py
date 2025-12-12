@@ -113,7 +113,7 @@ class URLNormalizer:
             domain1 = urlparse(url1).netloc.lower()
             domain2 = urlparse(url2).netloc.lower()
             return domain1 == domain2
-        except:
+        except (ValueError, AttributeError):
             return False
 
     def get_domain(self, url: str) -> Optional[str]:
@@ -128,7 +128,7 @@ class URLNormalizer:
         """
         try:
             return urlparse(url).netloc.lower()
-        except:
+        except (ValueError, AttributeError):
             return None
 
 

@@ -6,6 +6,7 @@ initialization functionality for the Fandom Scraper application.
 """
 
 import logging
+import re
 from typing import Dict, Any, Optional, List
 import pymongo
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
@@ -17,6 +18,19 @@ from datetime import datetime
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+
+def _mask_connection_string(connection_string: str) -> str:
+    """
+    Mask password in connection string for safe logging.
+
+    Args:
+        connection_string: MongoDB connection string
+
+    Returns:
+        Connection string with password replaced by asterisks.
+    """
+    return re.sub(r'(://[^:]+:)[^@]+(@)', r'\1****\2', connection_string)
 
 
 class DatabaseManager:
@@ -69,7 +83,7 @@ class DatabaseManager:
             ConnectionFailure: If unable to connect to MongoDB
         """
         try:
-            logger.info(f"Connecting to MongoDB at {self.connection_string}")
+            logger.info(f"Connecting to MongoDB at {_mask_connection_string(self.connection_string)}")
 
             # Create MongoDB client with connection options
             self.client = MongoClient(
@@ -332,7 +346,7 @@ class DatabaseManager:
 
     def backup_collection(self, collection_name: str, backup_path: str) -> bool:
         """
-        Create a backup of a specific collection.
+        Create a backup of a specific collection using streaming.
 
         Args:
             collection_name: Name of collection to backup
@@ -349,23 +363,37 @@ class DatabaseManager:
                 return False
 
             collection = self.get_collection(collection_name)
-            documents = list(collection.find({}))
 
-            # Convert ObjectId to string for JSON serialization
-            for doc in documents:
-                if "_id" in doc:
-                    doc["_id"] = str(doc["_id"])
-                # Convert datetime objects to ISO format
-                for key, value in doc.items():
-                    if isinstance(value, datetime):
-                        doc[key] = value.isoformat()
-
-            # Write backup file
+            # Stream documents directly to file to handle large collections
             os.makedirs(os.path.dirname(backup_path), exist_ok=True)
-            with open(backup_path, "w", encoding="utf-8") as f:
-                json.dump(documents, f, indent=2, ensure_ascii=False)
+            doc_count = 0
 
-            logger.info(f"Backup created: {collection_name} -> {backup_path}")
+            with open(backup_path, "w", encoding="utf-8") as f:
+                f.write("[\n")
+                first = True
+
+                for doc in collection.find({}):
+                    # Convert ObjectId to string for JSON serialization
+                    if "_id" in doc:
+                        doc["_id"] = str(doc["_id"])
+                    # Convert datetime objects to ISO format
+                    for key, value in doc.items():
+                        if isinstance(value, datetime):
+                            doc[key] = value.isoformat()
+
+                    if not first:
+                        f.write(",\n")
+                    first = False
+
+                    json.dump(doc, f, ensure_ascii=False)
+                    doc_count += 1
+
+                f.write("\n]")
+
+            logger.info(
+                f"Backup created: {collection_name} -> {backup_path} "
+                f"({doc_count} documents)"
+            )
             return True
 
         except Exception as e:
@@ -406,7 +434,8 @@ class DatabaseManager:
                 try:
                     coll_stats = self.database.command("collstats", name)  # type: ignore
                     size = coll_stats.get("size", 0)
-                except:
+                except Exception as e:
+                    self.logger.warning(f"Failed to get stats for collection '{name}': {e}")
                     size = 0
 
                 stats["collections"][name] = {
@@ -447,7 +476,7 @@ class DatabaseManager:
         try:
             return self.character_repo.update(character_id, character_data)  # type: ignore
         except Exception as e:
-            print(f"Failed to update character: {e}")
+            logger.error(f"Failed to update character: {e}")
             return False
 
     def insert_character(self, character_data: dict) -> Optional[str]:
@@ -463,7 +492,7 @@ class DatabaseManager:
         try:
             return self.character_repo.insert(character_data)  # type: ignore
         except Exception as e:
-            print(f"Failed to insert character: {e}")
+            logger.error(f"Failed to insert character: {e}")
             return None
 
     def find_character(self, query: dict) -> Optional[dict]:
@@ -487,7 +516,7 @@ class DatabaseManager:
                 # Generic find
                 return self.database.characters.find_one(query)  # type: ignore
         except Exception as e:
-            print(f"Failed to find character: {e}")
+            logger.error(f"Failed to find character: {e}")
             return None
 
 
@@ -516,7 +545,7 @@ class MongoDBConnection:
             self.database = self.client[self.database_name]
             return True
         except Exception as e:
-            print(f"MongoDB connection failed: {e}")
+            logger.error(f"MongoDB connection failed: {e}")
             return False
 
     def disconnect(self):
@@ -532,9 +561,49 @@ class MongoDBConnection:
             if self.client:
                 self.client.server_info()
                 return True
-        except:
+        except Exception:
             pass
         return False
+
+    def get_pool_stats(self) -> Dict[str, Any]:
+        """
+        Get connection pool statistics for monitoring.
+
+        Returns:
+            Dictionary containing pool stats and connection info
+        """
+        if not self.client:
+            return {"status": "disconnected"}
+
+        try:
+            server_info = self.client.server_info()
+            topology = self.client.topology_description
+
+            return {
+                "status": "connected",
+                "server_version": server_info.get("version", "unknown"),
+                "max_pool_size": self.client.options.pool_options.max_pool_size,
+                "min_pool_size": self.client.options.pool_options.min_pool_size,
+                "max_idle_time_ms": self.client.options.pool_options.max_idle_time_seconds
+                * 1000
+                if self.client.options.pool_options.max_idle_time_seconds
+                else None,
+                "connect_timeout_ms": self.client.options.connect_timeout * 1000
+                if self.client.options.connect_timeout
+                else None,
+                "server_selection_timeout_ms": self.client.options.server_selection_timeout
+                * 1000
+                if self.client.options.server_selection_timeout
+                else None,
+                "topology_type": topology.topology_type.name
+                if topology
+                else "unknown",
+                "connected_nodes": len(self.client.nodes) if self.client.nodes else 0,
+                "database_name": self.database_name,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get pool stats: {e}")
+            return {"status": "error", "error": str(e)}
 
 
 class CharacterRepository:
@@ -554,6 +623,15 @@ class CharacterRepository:
             self.collection.create_index([("_search_text", "text")])
             self.collection.create_index([("anime_name", 1)])
             self.collection.create_index([("quality_score", -1)])
+            # Compound indexes for optimized queries
+            self.collection.create_index(
+                [("anime_name", 1), ("quality_score", -1)],
+                name="anime_quality_compound"
+            )
+            self.collection.create_index(
+                [("status", 1), ("scraped_at", -1)],
+                name="status_recent_compound"
+            )
         except Exception:
             pass  # Indexes might already exist
 

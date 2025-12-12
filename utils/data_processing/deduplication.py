@@ -768,11 +768,11 @@ def create_deduplication_config() -> Dict[str, Any]:
             'remove_honorifics': True
         },
         'exclusion_patterns': [
-            r'^\s*,
-            r'^unknown,
-            r'^n/a,
-            r'^tbd,
-            r'^none,
-            r'^null
+            r'^\s*$',
+            r'^unknown$',
+            r'^n/a$',
+            r'^tbd$',
+            r'^none$',
+            r'^null$'
         ]
     }

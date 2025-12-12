@@ -1,3 +1,4 @@
+# tests/integration/__init__.py
 """
-tests.integration package
+Integration tests for Fandom GUI Scraper.
 """

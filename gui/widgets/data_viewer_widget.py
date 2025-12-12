@@ -44,6 +44,9 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QDialog,
     QApplication,
+    QStackedWidget,
+    QListWidget,
+    QListWidgetItem,
 )
 from PyQt6.QtCore import (
     Qt,
@@ -431,10 +434,10 @@ class DataViewerWidget(QWidget):
 
     def create_table_section(self) -> QFrame:
         """
-        Create the table section for data display.
+        Create the table section with multiple view modes.
 
         Returns:
-            Frame containing the data table
+            Frame containing table, card, and tree view widgets
         """
         frame = QFrame()
         frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
@@ -457,7 +460,10 @@ class DataViewerWidget(QWidget):
 
         layout.addLayout(header_layout)
 
-        # Create table widget
+        # Create stacked widget for different view modes
+        self.view_stack = QStackedWidget()
+
+        # Create table view (index 0)
         self.data_table = QTableWidget()
         self.data_table.setAlternatingRowColors(True)
         self.data_table.setSelectionBehavior(
@@ -477,9 +483,79 @@ class DataViewerWidget(QWidget):
         self.data_table.cellClicked.connect(self.on_table_cell_clicked)
         self.data_table.itemSelectionChanged.connect(self.on_selection_changed)
 
-        layout.addWidget(self.data_table)
+        self.view_stack.addWidget(self.data_table)
+
+        # Create card view (index 1)
+        self.card_view = self._create_card_view()
+        self.view_stack.addWidget(self.card_view)
+
+        # Create tree view (index 2)
+        self.tree_view = self._create_tree_view()
+        self.view_stack.addWidget(self.tree_view)
+
+        layout.addWidget(self.view_stack)
 
         return frame
+
+    def _create_card_view(self) -> QScrollArea:
+        """
+        Create the card view for displaying data as cards.
+
+        Returns:
+            Scroll area containing card grid
+        """
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        # Container widget for cards
+        self.card_container = QWidget()
+        self.card_layout = QGridLayout(self.card_container)
+        self.card_layout.setSpacing(10)
+        self.card_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+
+        scroll_area.setWidget(self.card_container)
+
+        return scroll_area
+
+    def _create_tree_view(self) -> QTreeWidget:
+        """
+        Create the tree view for hierarchical data display.
+
+        Returns:
+            Tree widget for hierarchical display
+        """
+        tree = QTreeWidget()
+        tree.setHeaderLabels(["Character", "Details"])
+        tree.setAlternatingRowColors(True)
+        tree.setColumnCount(2)
+        tree.header().setStretchLastSection(True)
+        tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        tree.itemClicked.connect(self._on_tree_item_clicked)
+        tree.setStyleSheet("""
+            QTreeWidget::item {
+                padding: 5px;
+            }
+            QTreeWidget::item:selected {
+                background-color: #007bff;
+                color: white;
+            }
+        """)
+
+        return tree
+
+    def _on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
+        """Handle tree item click."""
+        # Get the top-level parent to find the character
+        while item.parent():
+            item = item.parent()
+
+        # Find the corresponding character data
+        char_name = item.text(0)
+        for char_data in self.filtered_data:
+            if char_data.get("name") == char_name:
+                self.select_item(char_data)
+                break
 
     def create_detail_section(self) -> QFrame:
         """
@@ -717,10 +793,181 @@ class DataViewerWidget(QWidget):
         Change the data view mode.
 
         Args:
-            mode: New view mode
+            mode: New view mode (Table View, Card View, or Tree View)
         """
-        # TODO: Implement different view modes
         self.logger.info(f"View mode changed to: {mode}")
+
+        view_index = {"Table View": 0, "Card View": 1, "Tree View": 2}.get(mode, 0)
+        self.view_stack.setCurrentIndex(view_index)
+
+        # Update the current view with data
+        if mode == "Card View":
+            self._update_card_view()
+        elif mode == "Tree View":
+            self._update_tree_view()
+
+    def _update_card_view(self):
+        """Update the card view with current filtered data."""
+        # Clear existing cards
+        while self.card_layout.count():
+            item = self.card_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Calculate cards per row based on container width
+        cards_per_row = max(1, min(4, self.card_view.viewport().width() // 220))
+
+        for idx, char_data in enumerate(self.filtered_data):
+            row = idx // cards_per_row
+            col = idx % cards_per_row
+
+            card = self._create_character_card(char_data)
+            self.card_layout.addWidget(card, row, col)
+
+    def _create_character_card(self, char_data: Dict[str, Any]) -> QFrame:
+        """
+        Create a card widget for a character.
+
+        Args:
+            char_data: Character data dictionary
+
+        Returns:
+            Card frame widget
+        """
+        card = QFrame()
+        card.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
+        card.setFixedSize(200, 250)
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+            }
+            QFrame:hover {
+                border: 2px solid #007bff;
+                background-color: #f8f9fa;
+            }
+        """)
+
+        layout = QVBoxLayout(card)
+        layout.setSpacing(5)
+
+        # Character name
+        name_label = QLabel(char_data.get("name", "Unknown"))
+        name_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name_label.setWordWrap(True)
+        name_label.setMaximumHeight(40)
+        layout.addWidget(name_label)
+
+        # Anime name
+        anime_label = QLabel(char_data.get("anime", ""))
+        anime_label.setStyleSheet("color: #6c757d; font-size: 10px;")
+        anime_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        anime_label.setWordWrap(True)
+        anime_label.setMaximumHeight(30)
+        layout.addWidget(anime_label)
+
+        # Description preview
+        desc = char_data.get("description", "No description available")
+        if len(desc) > 100:
+            desc = desc[:100] + "..."
+        desc_label = QLabel(desc)
+        desc_label.setStyleSheet("color: #495057; font-size: 9px;")
+        desc_label.setWordWrap(True)
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(desc_label)
+
+        layout.addStretch()
+
+        # Stats row
+        stats_layout = QHBoxLayout()
+
+        # Image count
+        images = char_data.get("images", [])
+        image_count = len(images) if isinstance(images, list) else 0
+        img_label = QLabel(f"📷 {image_count}")
+        img_label.setStyleSheet("color: #6c757d; font-size: 9px;")
+        stats_layout.addWidget(img_label)
+
+        stats_layout.addStretch()
+
+        # Quality score if available
+        quality = char_data.get("quality_score", 0)
+        if quality:
+            quality_label = QLabel(f"⭐ {quality:.1f}")
+            quality_label.setStyleSheet("color: #ffc107; font-size: 9px;")
+            stats_layout.addWidget(quality_label)
+
+        layout.addLayout(stats_layout)
+
+        # Make card clickable
+        card.mousePressEvent = lambda e, data=char_data: self._on_card_clicked(data)
+
+        return card
+
+    def _on_card_clicked(self, char_data: Dict[str, Any]):
+        """Handle card click event."""
+        self.select_item(char_data)
+
+    def _update_tree_view(self):
+        """Update the tree view with current filtered data."""
+        self.tree_view.clear()
+
+        # Group characters by anime
+        anime_groups: Dict[str, List[Dict[str, Any]]] = {}
+        for char_data in self.filtered_data:
+            anime = char_data.get("anime", "Unknown")
+            if anime not in anime_groups:
+                anime_groups[anime] = []
+            anime_groups[anime].append(char_data)
+
+        # Create tree structure
+        for anime, characters in sorted(anime_groups.items()):
+            anime_item = QTreeWidgetItem([anime, f"{len(characters)} characters"])
+            anime_item.setFont(0, QFont("Arial", 10, QFont.Weight.Bold))
+            anime_item.setExpanded(True)
+
+            for char_data in sorted(characters, key=lambda x: x.get("name", "")):
+                char_item = QTreeWidgetItem([char_data.get("name", "Unknown")])
+                char_item.setData(0, Qt.ItemDataRole.UserRole, char_data)
+
+                # Add child items for character details
+                if char_data.get("description"):
+                    desc = char_data["description"]
+                    if len(desc) > 80:
+                        desc = desc[:80] + "..."
+                    desc_item = QTreeWidgetItem(["Description", desc])
+                    desc_item.setForeground(0, QBrush(QColor("#6c757d")))
+                    char_item.addChild(desc_item)
+
+                if char_data.get("url"):
+                    url_item = QTreeWidgetItem(["URL", char_data["url"]])
+                    url_item.setForeground(0, QBrush(QColor("#6c757d")))
+                    char_item.addChild(url_item)
+
+                images = char_data.get("images", [])
+                image_count = len(images) if isinstance(images, list) else 0
+                if image_count:
+                    img_item = QTreeWidgetItem(["Images", str(image_count)])
+                    img_item.setForeground(0, QBrush(QColor("#6c757d")))
+                    char_item.addChild(img_item)
+
+                if char_data.get("scraped_at"):
+                    scraped = char_data["scraped_at"]
+                    if hasattr(scraped, "strftime"):
+                        scraped = scraped.strftime("%Y-%m-%d %H:%M")
+                    time_item = QTreeWidgetItem(["Scraped", str(scraped)])
+                    time_item.setForeground(0, QBrush(QColor("#6c757d")))
+                    char_item.addChild(time_item)
+
+                anime_item.addChild(char_item)
+
+            self.tree_view.addTopLevelItem(anime_item)
+
+        # Resize columns to content
+        self.tree_view.resizeColumnToContents(0)
 
     @pyqtSlot()
     def apply_filters(self):
@@ -1154,7 +1401,7 @@ class DataViewerWidget(QWidget):
                 else:
                     formatted_date = str(scraped_at)
                 self.detail_labels["scraped_at"].setText(formatted_date)
-            except:
+            except (ValueError, TypeError, OSError):
                 self.detail_labels["scraped_at"].setText(str(scraped_at))
         else:
             self.detail_labels["scraped_at"].setText("Unknown")

@@ -401,7 +401,7 @@ class SelectorManager:
             with open(config_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Failed to load selector config {config_file}: {e}")
+            logger.error(f"Failed to load selector config {config_file}: {e}")
             return self._get_default_selectors()
 
     def _save_config(self, config_name: str, selectors: Dict[str, str]):
@@ -418,7 +418,7 @@ class SelectorManager:
             with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(selectors, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"Failed to save selector config {config_file}: {e}")
+            logger.error(f"Failed to save selector config {config_file}: {e}")
 
     def _get_default_selectors(self) -> Dict[str, str]:
         """
@@ -462,7 +462,7 @@ class SelectorManager:
 
             return True
         except Exception as e:
-            print(f"Failed to add custom selectors for {anime_name}: {e}")
+            logger.error(f"Failed to add custom selectors for {anime_name}: {e}")
             return False
 
     def get_available_configs(self) -> List[str]:

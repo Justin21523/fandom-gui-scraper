@@ -346,7 +346,7 @@ if __name__ == "__main__":
                     output = process.stdout.readline()
                     if output:
                         self.parse_spider_output(output.strip())
-                except:
+                except (IOError, OSError):
                     pass
 
                 # Small delay to prevent high CPU usage

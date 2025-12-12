@@ -1,0 +1,59 @@
+api:
+  cors_enabled: true
+  debug: false
+  enable_docs: true
+  host: localhost
+  port: 8000
+  rate_limit_requests: 1000
+  rate_limit_window_hours: 1
+database:
+  auth_source: admin
+  connection_timeout: 5000
+  host: localhost
+  name: fandom_scraper
+  password: null
+  port: 27017
+  server_selection_timeout: 3000
+  uri: null
+  username: null
+gui:
+  auto_save_interval: 300
+  enable_animations: true
+  remember_window_position: true
+  show_splash_screen: true
+  theme: dark
+  update_check_interval_days: 7
+  window_height: 700
+  window_width: 1000
+logging:
+  backup_count: 5
+  enable_console_logging: true
+  enable_file_logging: true
+  file_path: logs/app.log
+  level: INFO
+  log_format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  max_file_size_mb: 50
+scraping:
+  concurrent_requests: 8
+  delay: 1.0
+  download_delay_range:
+    - 0.5
+    - 1.5
+  enable_auto_throttling: true
+  max_concurrent_requests_per_domain: 1
+  respect_robots_txt: true
+  retry_times: 3
+  timeout: 30
+  user_agent: FandomScraper/1.0 (+https://github.com/user/fandom-scraper)
+storage:
+  allowed_image_formats:
+  - .jpg
+  - .jpeg
+  - .png
+  - .gif
+  - .webp
+  backups_dir: storage/backups/
+  documents_dir: storage/documents/
+  exports_dir: storage/exports/
+  images_dir: storage/images/
+  max_image_size_mb: 10

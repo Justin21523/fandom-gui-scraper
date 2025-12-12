@@ -114,7 +114,8 @@ def main():
         return exit_code
 
     except Exception as e:
-        print(f"Failed to start application: {e}")
+        # Use print to stderr as logging may not be initialized
+        print(f"Failed to start application: {e}", file=sys.stderr)
         return 1
 
 

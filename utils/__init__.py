@@ -8,7 +8,7 @@ visualization, and various helper functions for the scraper application.
 
 # Import existing utilities
 from .config_manager import ConfigManager
-from .logger import setup_logger, get_logger
+from .logger import setup_logging, get_logger
 from .normalizer import DataNormalizer
 from .selectors import SelectorManager
 

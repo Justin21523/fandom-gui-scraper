@@ -7,7 +7,7 @@ using the Repository pattern to abstract database interactions.
 """
 
 import logging
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Iterator
 from datetime import datetime
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError, PyMongoError
@@ -809,23 +809,46 @@ class CharacterRepository:
         Returns:
             List of character dictionaries
         """
+        return list(self.iter_export_characters(anime, quality_threshold))
+
+    def iter_export_characters(
+        self,
+        anime: Optional[str] = None,
+        quality_threshold: float = 0.0,
+        batch_size: int = 1000,
+    ) -> Iterator[Dict[str, Any]]:
+        """
+        Iterator for exporting characters with memory-efficient batch processing.
+
+        Args:
+            anime: Optional anime filter
+            quality_threshold: Minimum quality score
+            batch_size: Number of documents per batch
+
+        Yields:
+            Character dictionaries one at a time
+        """
         try:
             # Build query
-            query = {"data_quality_score": {"$gte": quality_threshold}}
+            query: Dict[str, Any] = {
+                "data_quality_score": {"$gte": quality_threshold}
+            }
             if anime:
-                query["anime"] = {"$regex": f"^{anime}$", "$options": "i"}  # type: ignore
+                query["anime"] = {"$regex": f"^{anime}$", "$options": "i"}
 
-            # Get all matching characters
+            # Use cursor with batch_size for memory efficiency
             cursor = (
                 self.collection.find(query, {"_id": 0})
-                .sort("anime", ASCENDING)
-                .sort("name", ASCENDING)
+                .sort([("anime", ASCENDING), ("name", ASCENDING)])
+                .batch_size(batch_size)
             )
-            characters = list(cursor)
 
-            logger.info(f"Exported {len(characters)} characters")
-            return characters
+            count = 0
+            for doc in cursor:
+                yield doc
+                count += 1
+
+            logger.info(f"Exported {count} characters via iterator")
 
         except Exception as e:
             logger.error(f"Character export failed: {e}")
-            return []
