@@ -2192,3 +2192,140 @@
     display: flex;
     gap: var(--spacing-xs);
 }
+
+/* ============================================
+   Universal Scraper Components
+   ============================================ */
+
+/* === Search Results List === */
+.search-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background-color: var(--bg-secondary);
+}
+
+.search-result-item:hover {
+    border-color: var(--color-primary);
+    background-color: var(--bg-hover);
+}
+
+.search-result-item.active {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-hover);
+    color: var(--text-inverse);
+}
+
+.search-result-item.active .text-muted {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.search-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-result-title {
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-xs);
+}
+
+.search-result-url {
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: var(--spacing-xs);
+}
+
+.search-result-desc {
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    opacity: 0.9;
+}
+
+.search-result-score {
+    flex-shrink: 0;
+    margin-left: var(--spacing-md);
+}
+
+/* === Category Progress === */
+.category-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.category-progress-item {
+    transition: opacity var(--transition-base);
+}
+
+.category-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.category-progress-name {
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.category-progress-value {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+/* === Input Group === */
+.input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.input-group .input {
+    flex: 1;
+}
+
+.input-group .btn {
+    flex-shrink: 0;
+}
+
+/* === Checkbox Group === */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* === Loading Spinner (Small) === */
+.loading-spinner--sm {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+/* === Progress Bar Small === */
+.progress--sm {
+    height: 6px;
+}
+
+.progress--sm .progress__bar {
+    border-radius: var(--radius-sm);
+}

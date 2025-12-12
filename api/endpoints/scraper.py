@@ -91,6 +91,77 @@ class SelectorTest(BaseModel):
     selectors: dict
 
 
+# --- Universal Scraper Schemas ---
+
+class AnimeSearchRequest(BaseModel):
+    """Request to search for anime wiki."""
+    anime_name: str = Field(..., description="Name of the anime to search for")
+    top_n: int = Field(default=5, ge=1, le=10, description="Number of top results to return")
+
+
+class FandomSearchResult(BaseModel):
+    """Single Fandom search result."""
+    url: str
+    domain: str
+    title: str
+    description: Optional[str] = None
+    relevance_score: float
+    is_main_page: bool
+
+
+class UniversalScraperConfig(BaseModel):
+    """Configuration for Universal Fandom Scraper."""
+    input_source: str = Field(..., description="Anime name or Fandom wiki URL")
+    input_type: str = Field(default="name", description="Type of input: 'name' or 'url'")
+
+    # Category toggles
+    crawl_characters: bool = Field(default=True, description="Crawl character pages")
+    crawl_episodes: bool = Field(default=True, description="Crawl episode pages")
+    crawl_galleries: bool = Field(default=True, description="Crawl gallery pages")
+    crawl_chapters: bool = Field(default=False, description="Crawl chapter pages (manga)")
+
+    # Per-category limits
+    max_chars: int = Field(default=100, ge=0, description="Max characters to scrape (0 = unlimited)")
+    max_episodes: int = Field(default=50, ge=0, description="Max episodes to scrape")
+    max_gallery_images: int = Field(default=200, ge=0, description="Max gallery images")
+    max_chapters: int = Field(default=50, ge=0, description="Max chapters to scrape")
+
+    # General settings
+    delay: float = Field(default=1.0, ge=0, le=10, description="Delay between requests in seconds")
+    retries: int = Field(default=3, ge=0, le=10, description="Number of retries on failure")
+
+
+class CategoryProgress(BaseModel):
+    """Progress for a specific category."""
+    enabled: bool
+    total: int
+    completed: int
+    failed: int
+    max_limit: int
+
+
+class UniversalScraperProgress(BaseModel):
+    """Progress information for Universal Scraper."""
+    characters: CategoryProgress
+    episodes: CategoryProgress
+    galleries: CategoryProgress
+    chapters: CategoryProgress
+    overall_completed: int
+    overall_total: int
+    speed: Optional[float] = None
+    eta: Optional[int] = None
+
+
+class UniversalScraperStatus(BaseModel):
+    """Status for Universal Scraper."""
+    status: str  # idle, running, paused, stopped
+    started_at: Optional[datetime] = None
+    anime_name: Optional[str] = None
+    wiki_url: Optional[str] = None
+    progress: Optional[UniversalScraperProgress] = None
+    error: Optional[str] = None
+
+
 # --- Global State ---
 
 # Config persistence directory
@@ -651,3 +722,329 @@ async def run_simulated_scraper(config: ScraperConfig):
     if scraper_state.status != "stopped":
         scraper_state.status = "idle"
         scraper_state.add_log("info", f"Simulation completed. {scraper_state.progress.completed} characters scraped.")
+
+
+# ========================================
+# UNIVERSAL FANDOM SCRAPER ENDPOINTS
+# ========================================
+
+class UniversalScraperState:
+    """Global state management for Universal Scraper."""
+
+    def __init__(self):
+        self.status = "idle"
+        self.config: Optional[UniversalScraperConfig] = None
+        self.started_at: Optional[datetime] = None
+        self.anime_name: Optional[str] = None
+        self.wiki_url: Optional[str] = None
+        self.progress: Optional[UniversalScraperProgress] = None
+        self.error: Optional[str] = None
+        self.logs: list[ScraperLog] = []
+        self._task: Optional[asyncio.Task] = None
+        self._process = None  # For subprocess management
+
+    def reset(self):
+        """Reset scraper state."""
+        self.status = "idle"
+        self.config = None
+        self.started_at = None
+        self.anime_name = None
+        self.wiki_url = None
+        self.progress = None
+        self.error = None
+
+    def add_log(self, level: str, message: str):
+        """Add a log entry."""
+        self.logs.append(ScraperLog(
+            timestamp=datetime.now(),
+            level=level,
+            message=message
+        ))
+        if len(self.logs) > 1000:
+            self.logs = self.logs[-1000:]
+
+
+universal_scraper_state = UniversalScraperState()
+
+
+@router.post("/search-anime", response_model=List[FandomSearchResult])
+async def search_anime(request: AnimeSearchRequest):
+    """
+    Search for anime Fandom wiki using Brave Search API.
+
+    Returns top N search results with relevance scoring.
+    """
+    try:
+        from utils.brave_search import BraveSearchClient
+
+        client = BraveSearchClient()
+        results = client.find_fandom_wiki(request.anime_name, top_n=request.top_n)
+
+        # Convert to response model
+        return [
+            FandomSearchResult(
+                url=r.url,
+                domain=r.domain,
+                title=r.title,
+                description=r.description,
+                relevance_score=r.relevance_score,
+                is_main_page=r.is_main_page
+            )
+            for r in results
+        ]
+
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Brave Search integration not available. Please check BRAVE_API_KEY environment variable."
+        )
+    except Exception as e:
+        logger.error(f"Anime search error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@router.post("/start-universal")
+async def start_universal_scraper(
+    config: UniversalScraperConfig,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Start the Universal Fandom Scraper with multi-category support.
+
+    Supports:
+    - Anime name or direct URL input
+    - Multi-category crawling (characters, episodes, galleries, chapters)
+    - Per-category limits
+    - Real-time progress tracking
+    """
+    if universal_scraper_state.status == "running":
+        raise HTTPException(status_code=400, detail="Universal scraper is already running")
+
+    # Initialize state
+    universal_scraper_state.config = config
+    universal_scraper_state.status = "running"
+    universal_scraper_state.started_at = datetime.now()
+    universal_scraper_state.error = None
+
+    # Initialize progress
+    universal_scraper_state.progress = UniversalScraperProgress(
+        characters=CategoryProgress(
+            enabled=config.crawl_characters,
+            total=0,
+            completed=0,
+            failed=0,
+            max_limit=config.max_chars
+        ),
+        episodes=CategoryProgress(
+            enabled=config.crawl_episodes,
+            total=0,
+            completed=0,
+            failed=0,
+            max_limit=config.max_episodes
+        ),
+        galleries=CategoryProgress(
+            enabled=config.crawl_galleries,
+            total=0,
+            completed=0,
+            failed=0,
+            max_limit=config.max_gallery_images
+        ),
+        chapters=CategoryProgress(
+            enabled=config.crawl_chapters,
+            total=0,
+            completed=0,
+            failed=0,
+            max_limit=config.max_chapters
+        ),
+        overall_completed=0,
+        overall_total=0
+    )
+
+    universal_scraper_state.add_log("info", f"Starting Universal Scraper for: {config.input_source}")
+
+    # Start scraping in background
+    background_tasks.add_task(run_universal_scraper, config)
+
+    return {
+        "status": "started",
+        "message": f"Universal scraper started for {config.input_source}",
+        "input_type": config.input_type
+    }
+
+
+@router.get("/universal-status", response_model=UniversalScraperStatus)
+async def get_universal_status():
+    """Get current Universal Scraper status with per-category progress."""
+    return UniversalScraperStatus(
+        status=universal_scraper_state.status,
+        started_at=universal_scraper_state.started_at,
+        anime_name=universal_scraper_state.anime_name,
+        wiki_url=universal_scraper_state.wiki_url,
+        progress=universal_scraper_state.progress,
+        error=universal_scraper_state.error
+    )
+
+
+@router.post("/stop-universal")
+async def stop_universal_scraper(current_user: dict = Depends(get_current_user)):
+    """Stop the running Universal Scraper."""
+    if universal_scraper_state.status not in ("running", "paused"):
+        raise HTTPException(status_code=400, detail="Universal scraper is not running")
+
+    universal_scraper_state.status = "stopped"
+    universal_scraper_state.add_log("info", "Universal scraper stopped by user")
+
+    # Terminate subprocess if running
+    if universal_scraper_state._process:
+        try:
+            universal_scraper_state._process.terminate()
+            universal_scraper_state._process.wait(timeout=5)
+        except:
+            universal_scraper_state._process.kill()
+
+    if universal_scraper_state._task and not universal_scraper_state._task.done():
+        universal_scraper_state._task.cancel()
+
+    return {"status": "stopped", "message": "Universal scraper stopped"}
+
+
+@router.post("/pause-universal")
+async def pause_universal_scraper(current_user: dict = Depends(get_current_user)):
+    """Pause the running Universal Scraper."""
+    if universal_scraper_state.status != "running":
+        raise HTTPException(status_code=400, detail="Universal scraper is not running")
+
+    universal_scraper_state.status = "paused"
+    universal_scraper_state.add_log("info", "Universal scraper paused")
+
+    return {"status": "paused", "message": "Universal scraper paused"}
+
+
+@router.post("/resume-universal")
+async def resume_universal_scraper(current_user: dict = Depends(get_current_user)):
+    """Resume the paused Universal Scraper."""
+    if universal_scraper_state.status != "paused":
+        raise HTTPException(status_code=400, detail="Universal scraper is not paused")
+
+    universal_scraper_state.status = "running"
+    universal_scraper_state.add_log("info", "Universal scraper resumed")
+
+    return {"status": "running", "message": "Universal scraper resumed"}
+
+
+@router.get("/universal-logs", response_model=list[ScraperLog])
+async def get_universal_logs(
+    limit: int = 100,
+    level: Optional[str] = None
+):
+    """Get Universal Scraper logs."""
+    logs = universal_scraper_state.logs
+
+    if level and level != "all":
+        logs = [log for log in logs if log.level == level]
+
+    return logs[-limit:]
+
+
+async def run_universal_scraper(config: UniversalScraperConfig):
+    """
+    Run the Universal Fandom Scraper in the background.
+
+    This function spawns the UniversalFandomSpider using Scrapy's API
+    and tracks progress by category.
+    """
+    import subprocess
+    import sys
+
+    try:
+        universal_scraper_state.add_log("info", "Initializing Universal Scraper...")
+
+        # Discover wiki URL if needed
+        if config.input_type == "name":
+            try:
+                from utils.brave_search import BraveSearchClient
+                client = BraveSearchClient()
+                results = client.find_fandom_wiki(config.input_source, top_n=1)
+
+                if not results:
+                    raise ValueError(f"No Fandom wiki found for: {config.input_source}")
+
+                universal_scraper_state.wiki_url = results[0].url
+                universal_scraper_state.anime_name = config.input_source
+
+            except Exception as e:
+                universal_scraper_state.error = f"Wiki discovery failed: {str(e)}"
+                universal_scraper_state.status = "stopped"
+                universal_scraper_state.add_log("error", str(universal_scraper_state.error))
+                return
+        else:
+            universal_scraper_state.wiki_url = config.input_source
+            # Extract anime name from URL
+            from urllib.parse import urlparse
+            parsed = urlparse(config.input_source)
+            universal_scraper_state.anime_name = parsed.netloc.split('.')[0].replace('-', ' ').title()
+
+        universal_scraper_state.add_log("info", f"Wiki URL: {universal_scraper_state.wiki_url}")
+        universal_scraper_state.add_log("info", f"Anime: {universal_scraper_state.anime_name}")
+
+        # Build scrapy command
+        cmd = [
+            sys.executable,
+            "-m", "scrapy", "crawl", "universal_fandom",
+            "-a", f"input_source={universal_scraper_state.wiki_url}",
+            "-a", f"input_type=url",
+            "-a", f"crawl_characters={config.crawl_characters}",
+            "-a", f"crawl_episodes={config.crawl_episodes}",
+            "-a", f"crawl_galleries={config.crawl_galleries}",
+            "-a", f"crawl_chapters={config.crawl_chapters}",
+            "-a", f"max_chars={config.max_chars}",
+            "-a", f"max_episodes={config.max_episodes}",
+            "-a", f"max_gallery_images={config.max_gallery_images}",
+            "-a", f"max_chapters={config.max_chapters}",
+        ]
+
+        universal_scraper_state.add_log("info", "Starting spider process...")
+
+        # Start subprocess
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            cwd=Path(__file__).parent.parent.parent
+        )
+
+        universal_scraper_state._process = process
+
+        # Monitor output
+        for line in process.stdout:
+            line = line.strip()
+            if line:
+                universal_scraper_state.add_log("info", line)
+
+                # Parse progress from scrapy logs
+                # This is simplified - real implementation would parse structured logs
+                if "Scraped" in line:
+                    universal_scraper_state.progress.overall_completed += 1
+
+        # Wait for completion
+        return_code = process.wait()
+
+        if return_code == 0:
+            universal_scraper_state.add_log("info", "Universal scraping completed successfully")
+            universal_scraper_state.status = "idle"
+        else:
+            universal_scraper_state.error = f"Scraper exited with code {return_code}"
+            universal_scraper_state.status = "stopped"
+            universal_scraper_state.add_log("error", universal_scraper_state.error)
+
+    except asyncio.CancelledError:
+        universal_scraper_state.add_log("warning", "Universal scraper task cancelled")
+        universal_scraper_state.status = "stopped"
+    except Exception as e:
+        logger.error(f"Universal scraper error: {e}", exc_info=True)
+        universal_scraper_state.status = "stopped"
+        universal_scraper_state.error = str(e)
+        universal_scraper_state.add_log("error", f"Error: {e}")

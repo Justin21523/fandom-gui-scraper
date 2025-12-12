@@ -135,7 +135,76 @@ export async function deleteConfig(name) {
     return api.delete(`/scraper/configs/${encodeURIComponent(name)}`);
 }
 
+// ========================================
+// UNIVERSAL FANDOM SCRAPER API
+// ========================================
+
+/**
+ * 搜尋動畫的 Fandom wiki
+ * @param {string} animeName - 動畫名稱
+ * @param {number} topN - 返回結果數量
+ * @returns {Promise<Object[]>} 搜尋結果列表
+ */
+export async function searchAnime(animeName, topN = 5) {
+    return api.post('/scraper/search-anime', {
+        anime_name: animeName,
+        top_n: topN
+    });
+}
+
+/**
+ * 啟動 Universal Fandom Scraper
+ * @param {Object} config - Universal scraper 配置
+ * @returns {Promise<Object>} 啟動結果
+ */
+export async function startUniversalScraper(config) {
+    return api.post('/scraper/start-universal', config);
+}
+
+/**
+ * 取得 Universal Scraper 狀態
+ * @returns {Promise<Object>} 狀態資訊 (包含分類別進度)
+ */
+export async function getUniversalStatus() {
+    return api.get('/scraper/universal-status');
+}
+
+/**
+ * 停止 Universal Scraper
+ * @returns {Promise<Object>}
+ */
+export async function stopUniversalScraper() {
+    return api.post('/scraper/stop-universal');
+}
+
+/**
+ * 暫停 Universal Scraper
+ * @returns {Promise<Object>}
+ */
+export async function pauseUniversalScraper() {
+    return api.post('/scraper/pause-universal');
+}
+
+/**
+ * 繼續 Universal Scraper
+ * @returns {Promise<Object>}
+ */
+export async function resumeUniversalScraper() {
+    return api.post('/scraper/resume-universal');
+}
+
+/**
+ * 取得 Universal Scraper 日誌
+ * @param {Object} options - 查詢選項
+ * @returns {Promise<Object[]>} 日誌列表
+ */
+export async function getUniversalLogs(options = {}) {
+    const { limit = 100, level = 'all' } = options;
+    return api.get('/scraper/universal-logs', { limit, level });
+}
+
 export default {
+    // Legacy scraper
     getPresets,
     startScraper,
     stopScraper,
@@ -150,5 +219,14 @@ export default {
     saveConfig,
     getConfig,
     getConfigs,
-    deleteConfig
+    deleteConfig,
+
+    // Universal scraper
+    searchAnime,
+    startUniversalScraper,
+    getUniversalStatus,
+    stopUniversalScraper,
+    pauseUniversalScraper,
+    resumeUniversalScraper,
+    getUniversalLogs
 };
