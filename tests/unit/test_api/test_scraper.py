@@ -190,7 +190,8 @@ class TestConfigManager:
         # Test various names
         assert manager._sanitize_name("Simple Name") == "simple_name"
         assert manager._sanitize_name("Name with $pecial Ch@rs!") == "name_with__pecial_ch_rs_"
-        assert manager._sanitize_name("日本語") == "___"
+        # Unicode is now supported in modern filesystems
+        assert manager._sanitize_name("日本語") == "日本語"
 
 
 # ============================================================================

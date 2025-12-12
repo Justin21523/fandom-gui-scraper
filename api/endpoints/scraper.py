@@ -942,7 +942,11 @@ async def get_universal_logs(
     logs = universal_scraper_state.logs
 
     if level and level != "all":
-        logs = [log for log in logs if log.level == level]
+        # Handle both dict and object access for logs
+        logs = [
+            log for log in logs
+            if (log.get("level") if isinstance(log, dict) else log.level) == level
+        ]
 
     return logs[-limit:]
 

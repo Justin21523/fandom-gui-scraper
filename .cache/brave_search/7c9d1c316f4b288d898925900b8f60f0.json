@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-12-12T19:07:00.815748",
+  "query": " site:fandom.com wiki",
+  "results": [
+    {
+      "title": "Fandom",
+      "url": "https://www.fandom.com",
+      "is_source_local": false,
+      "is_source_both": false,
+      "description": "G.I. Joe Wiki",
+      "profile": {
+        "name": "Fandom",
+        "url": "https://www.fandom.com",
+        "long_name": "fandom.com",
+        "img": "https://imgs.search.brave.com/C5dewhsfFaCwEYAqjGuDTv0Z4pOn5f2IXzKOu1qjAdc/rs:fit:32:32:1:0/g:ce/aHR0cDovL2Zhdmlj/b25zLnNlYXJjaC5i/cmF2ZS5jb20vaWNv/bnMvODBjNTlhYWJh/ZTZkMjkzNmFjZDIx/ZDExOTgwZGY5Nzcy/ZWYwOWQ4MjM3ZWI3/ZjRlZTljOWU0ZTlj/YjE0YmY0NC93d3cu/ZmFuZG9tLmNvbS8"
+      },
+      "language": "en",
+      "family_friendly": true,
+      "type": "search_result",
+      "subtype": "generic",
+      "is_live": false,
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "fandom.com",
+        "hostname": "www.fandom.com",
+        "favicon": "https://imgs.search.brave.com/C5dewhsfFaCwEYAqjGuDTv0Z4pOn5f2IXzKOu1qjAdc/rs:fit:32:32:1:0/g:ce/aHR0cDovL2Zhdmlj/b25zLnNlYXJjaC5i/cmF2ZS5jb20vaWNv/bnMvODBjNTlhYWJh/ZTZkMjkzNmFjZDIx/ZDExOTgwZGY5Nzcy/ZWYwOWQ4MjM3ZWI3/ZjRlZTljOWU0ZTlj/YjE0YmY0NC93d3cu/ZmFuZG9tLmNvbS8",
+        "path": ""
+      },
+      "thumbnail": {
+        "src": "https://imgs.search.brave.com/_okAsss1WTI0Tx0ldgx6URFdTcotBz-OhhxgTocGieA/rs:fit:200:200:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWMud2lraWEubm9j/b29raWUubmV0Lzc1/MGZlYjg1LWRlODgt/NGE0Zi1iMjk0LThi/NDgxNDJhYzE4Mi90/aHVtYm5haWwtZG93/bi93aWR0aC8xMjgw/L2hlaWdodC83MjA",
+        "original": "https://static.wikia.nocookie.net/750feb85-de88-4a4f-b294-8b48142ac182/thumbnail-down/width/1280/height/720",
+        "logo": false
+      },
+      "cluster_type": "generic",
+      "cluster": [
+        {
+          "title": "Explore Wikis",
+          "url": "https://www.fandom.com/explore",
+          "is_source_local": false,
+          "is_source_both": false,
+          "description": "Share everything you know about your passions. Make an edit, start a page, or start a <strong>wiki</strong>.",
+          "family_friendly": true
+        },
+        {
+          "title": "TV",
+          "url": "https://www.fandom.com/topics/tv",
+          "is_source_local": false,
+          "is_source_both": false,
+          "description": "The entertainment site where fans come first. Your daily source for all things TV, movies, and games, including Star Wars, Fallout, Marvel, DC and more.",
+          "family_friendly": true
+        },
+        {
+          "title": "Games",
+          "url": "https://www.fandom.com/topics/games",
+          "is_source_local": false,
+          "is_source_both": false,
+          "description": "The entertainment site where fans come first. Your daily source for all things TV, movies, and games, including Star Wars, Fallout, Marvel, DC and more.",
+          "family_friendly": true
+        },
+        {
+          "title": "Movies",
+          "url": "https://www.fandom.com/topics/movies",
+          "is_source_local": false,
+          "is_source_both": false,
+          "description": "JavaScript is disabled in your browser · Please enable JavaScript to proceed · A required part of this site couldn’t load. This may be due to a browser extension, network issues, or browser settings. Please check your connection, disable any ad blockers, or try using a different browser",
+          "family_friendly": true
+        }
+      ]
+    },
+    {
+      "title": "Wikipedia | The Wiki Wiki | Fandom",
+      "url": "https://wikis.fandom.com/wiki/Wikipedia",
+      "is_source_local": false,
+      "is_source_both": false,
+      "description": "Wikipedia is <strong>a free-content encyclopedia that operates under an open collaboration model</strong>. It is written and maintained by volunteers, known as Wikipedians, using the wiki software MediaWiki.",
+      "page_age": "2025-12-02T17:00:00",
+      "profile": {
+        "name": "Fandom",
+        "url": "https://wikis.fandom.com/wiki/Wikipedia",
+        "long_name": "wikis.fandom.com",
+        "img": "https://imgs.search.brave.com/oB7g7-Nlg8Vheq7njmOGxmR7dc1pnw8xBdY35jbiPtA/rs:fit:32:32:1:0/g:ce/aHR0cDovL2Zhdmlj/b25zLnNlYXJjaC5i/cmF2ZS5jb20vaWNv/bnMvZjkzYTY1MTQ3/YzMxNTNhODUwZjRl/M2IxZDUzNjg1M2Fk/NWQwYTdkY2UxZmJm/ZTNlMmZhYzY1MDZl/NjIzZGQ2OC93aWtp/cy5mYW5kb20uY29t/Lw"
+      },
+      "language": "en",
+      "family_friendly": true,
+      "type": "search_result",
+      "subtype": "generic",
+      "is_live": false,
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "wikis.fandom.com",
+        "hostname": "wikis.fandom.com",
+        "favicon": "https://imgs.search.brave.com/oB7g7-Nlg8Vheq7njmOGxmR7dc1pnw8xBdY35jbiPtA/rs:fit:32:32:1:0/g:ce/aHR0cDovL2Zhdmlj/b25zLnNlYXJjaC5i/cmF2ZS5jb20vaWNv/bnMvZjkzYTY1MTQ3/YzMxNTNhODUwZjRl/M2IxZDUzNjg1M2Fk/NWQwYTdkY2UxZmJm/ZTNlMmZhYzY1MDZl/NjIzZGQ2OC93aWtp/cy5mYW5kb20uY29t/Lw",
+        "path": "› wiki  › Wikipedia"
+      },
+      "thumbnail": {
+        "src": "https://imgs.search.brave.com/p0cfqVBRiR3MXZ_41x6GHkVNM7jj9bDZ2p6k63ABPKA/rs:fit:200:200:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWMud2lraWEubm9j/b29raWUubmV0L3dp/a2lzL2ltYWdlcy9h/L2ExL1dpa2lwZWRp/YS1sb2dvLndlYnAv/cmV2aXNpb24vbGF0/ZXN0P2NiPTIwMjUw/ODA2MTQxODQw",
+        "original": "https://static.wikia.nocookie.net/wikis/images/a/a1/Wikipedia-logo.webp/revision/latest?cb=20250806141840",
+        "logo": true
+      },
+      "age": "1 week ago"
+    }
+  ]
+}
