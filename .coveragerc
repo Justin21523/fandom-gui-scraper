@@ -1,0 +1,146 @@
+# Coverage.py configuration
+# https://coverage.readthedocs.io/en/latest/config.html
+
+[run]
+# Source files to measure
+source = .
+
+# Files to omit from coverage
+omit =
+    # Test files
+    tests/*
+    **/test_*.py
+    **/*_test.py
+
+    # Virtual environments
+    venv/*
+    .venv/*
+    */site-packages/*
+
+    # Configuration files
+    setup.py
+    conftest.py
+
+    # Node modules
+    node_modules/*
+
+    # Frontend files (covered by Jest)
+    frontend/*
+
+    # Build artifacts
+    build/*
+    dist/*
+    *.egg-info/*
+
+    # Third-party
+    */lib/python*/
+
+# Branch coverage
+branch = True
+
+# Parallel mode for multiprocessing
+parallel = False
+
+# Data file location
+data_file = .coverage
+
+# Concurrency type
+concurrency = thread
+
+[report]
+# Precision for coverage percentage
+precision = 2
+
+# Show missing line numbers
+show_missing = True
+
+# Skip covered files in report
+skip_covered = False
+
+# Skip empty files
+skip_empty = True
+
+# Sort by coverage percentage
+sort = Cover
+
+# Exclude lines from coverage
+exclude_lines =
+    # Standard pragma
+    pragma: no cover
+
+    # Defensive programming
+    raise AssertionError
+    raise NotImplementedError
+    return NotImplemented
+
+    # Debugging code
+    def __repr__
+    def __str__
+
+    # Main guard
+    if __name__ == .__main__.:
+
+    # Type checking
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+
+    # Abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+
+    # Protocol methods
+    @overload
+    \.\.\.
+
+    # Logging
+    logger\.debug
+    logger\.info
+
+    # Platform specific
+    if sys.platform
+
+    # Version specific
+    if sys.version_info
+
+# Partial branches to exclude
+partial_branches =
+    pragma: no branch
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+
+[html]
+# HTML report directory
+directory = htmlcov
+
+# Show contexts in HTML report
+show_contexts = True
+
+# Title for HTML report
+title = Fandom Scraper Coverage Report
+
+[xml]
+# XML report file
+output = coverage.xml
+
+[json]
+# JSON report file
+output = coverage.json
+
+# Pretty print JSON
+pretty_print = True
+
+# Show contexts in JSON
+show_contexts = True
+
+[paths]
+# Path mapping for coverage combination
+source =
+    .
+    */site-packages/
+
+[coverage:paths]
+# Paths that should be considered equivalent
+source =
+    .
+    /home/*/fandom-gui-scraper
+    /workspace/fandom-gui-scraper
