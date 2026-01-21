@@ -1,0 +1,47 @@
+anime_specific:
+  base_url: https://onepiece.fandom.com
+  name: One Piece
+  special_categories:
+  - Straw Hat Pirates
+  - Marines
+  - Pirates
+  - Devil Fruit Users
+extends: generic_fandom
+selectors:
+  character_list:
+    character_links:
+      attribute: href
+      description: Character page links excluding categories and files
+      multiple: true
+      selector: .category-page__members a[href*='/wiki/']:not([href*='Category:']):not([href*='File:'])
+      selector_type: css
+    url_pattern: https://onepiece.fandom.com/wiki/Category:Characters
+  character_page:
+    name:
+      description: Character name with One Piece specific cleaning
+      post_process: clean_character_name
+      required: true
+      selector: h1.page-header__title
+      selector_type: css
+  infobox_fields:
+    bounty:
+      description: Character bounty amount
+      post_process: parse_bounty
+      required: false
+      selector: '[data-source=''bounty''] .pi-data-value'
+      selector_type: css
+    crew:
+      description: Pirate crew affiliation
+      required: false
+      selector: '[data-source=''crew''] .pi-data-value a'
+      selector_type: css
+    devil_fruit:
+      description: Devil fruit name
+      required: false
+      selector: '[data-source=''dfname''] .pi-data-value'
+      selector_type: css
+    epithet:
+      description: Character epithet or nickname
+      required: false
+      selector: '[data-source=''epithet''] .pi-data-value'
+      selector_type: css

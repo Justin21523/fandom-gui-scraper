@@ -40,7 +40,13 @@ def get_db() -> DatabaseManager:
             connection_string=config.database.get_connection_string(),
             database_name=config.database.name or "fandom_scraper",
         )
-        _db_manager.connect()
+        try:
+            success = _db_manager.connect()
+            if not success:
+                logger.warning("Database connection failed, but continuing...")
+        except Exception as e:
+            logger.error(f"Database connection error: {e}")
+            # 不拋出異常，允許 API 繼續運行
     return _db_manager
 
 
@@ -59,6 +65,16 @@ async def list_characters(
     - **anime_name**: Optional filter by anime name
     """
     try:
+        # 檢查資料庫是否連接
+        if not db._is_connected:
+            return CharacterListResponse(
+                items=[],
+                total=0,
+                page=page,
+                per_page=per_page,
+                pages=1,
+            )
+
         collection = db.get_collection("characters")
 
         # Build query filter
@@ -92,7 +108,14 @@ async def list_characters(
         )
     except Exception as e:
         logger.error(f"Error listing characters: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # 返回空列表而不是錯誤
+        return CharacterListResponse(
+            items=[],
+            total=0,
+            page=page,
+            per_page=per_page,
+            pages=1,
+        )
 
 
 @router.get("/search", response_model=CharacterListResponse)
@@ -141,6 +164,16 @@ async def search_characters(
 async def get_stats(db: DatabaseManager = Depends(get_db)):
     """Get character statistics."""
     try:
+        # 檢查資料庫是否連接
+        if not db._is_connected:
+            return StatsResponse(
+                total_characters=0,
+                total_anime=0,
+                characters_by_anime={},
+                quality_distribution={},
+                recent_updates=0,
+            )
+
         collection = db.get_collection("characters")
 
         # Total characters

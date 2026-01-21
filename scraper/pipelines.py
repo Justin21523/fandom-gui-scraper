@@ -75,6 +75,13 @@ class DataValidationPipeline:
         adapter = ItemAdapter(item)
 
         try:
+            # Non-character items (episodes/galleries/chapters) are exported via
+            # FileExportPipeline. Character-specific validation/normalization
+            # would incorrectly drop them.
+            content_type = adapter.get("content_type")
+            if content_type and content_type != "character":
+                return dict(adapter)
+
             # Check for errors in scraped data
             if adapter.get("error"):
                 self.logger.warning(f"Item contains error: {adapter['error']}")
@@ -231,8 +238,39 @@ class ImageDownloadPipeline(ImagesPipeline):
     - Image metadata extraction
     """
 
-    def __init__(self, store_uri, download_func=None, settings=None):
-        super().__init__(store_uri, download_func, settings)
+    @classmethod
+    def from_crawler(cls, crawler):
+        """
+        Create pipeline instance from crawler settings.
+
+        Scrapy's built-in ImagesPipeline.from_crawler signature/behaviour
+        has changed across versions (some pass a `crawler=` kwarg into
+        the pipeline constructor). We override it to keep this pipeline
+        compatible and prevent unexpected constructor kwargs crashing jobs.
+        """
+        store_uri = crawler.settings.get("IMAGES_STORE")
+        if not store_uri:
+            raise ValueError("IMAGES_STORE is required for ImageDownloadPipeline")
+        return cls(store_uri=store_uri, settings=crawler.settings, crawler=crawler)
+
+    def __init__(
+        self,
+        store_uri,
+        download_func=None,
+        settings=None,
+        crawler=None,
+        **kwargs,
+    ):
+        try:
+            super().__init__(
+                store_uri,
+                download_func=download_func,
+                settings=settings,
+                crawler=crawler,
+                **kwargs,
+            )
+        except TypeError:
+            super().__init__(store_uri, download_func, settings)
         self.logger = get_logger(self.__class__.__name__)
 
         # Image processing settings
@@ -261,6 +299,22 @@ class ImageDownloadPipeline(ImagesPipeline):
             Image download requests
         """
         adapter = ItemAdapter(item)
+        if adapter.get("content_type") and adapter.get("content_type") != "character":
+            return []
+
+        # Global switch to reduce storage usage
+        env_download = os.getenv("DOWNLOAD_IMAGES")
+        if env_download is not None and env_download.lower() in ("0", "false", "no"):
+            return []
+
+        try:
+            spider = getattr(info, "spider", None)
+            crawler = getattr(spider, "crawler", None)
+            if crawler and not crawler.settings.getbool("DOWNLOAD_IMAGES", True):
+                return []
+        except Exception:
+            pass
+
         images = adapter.get("images", [])
 
         if not images:
@@ -551,13 +605,19 @@ class DataStoragePipeline:
         Args:
             spider: Spider instance
         """
+        self.db_manager = None
         try:
-            self.db_manager = DatabaseManager(self.mongo_uri, self.mongo_db)
-            self.db_manager.connect()
+            db_manager = DatabaseManager(self.mongo_uri, self.mongo_db)
+            if not db_manager.connect():
+                self.logger.warning(
+                    "MongoDB unavailable; skipping DB storage (set ENABLE_MONGO=true and MONGO_URI to enable)"
+                )
+                return
+            self.db_manager = db_manager
             self.logger.info("Database connection established")
         except Exception as e:
-            self.logger.error(f"Failed to connect to database: {e}")
-            raise
+            self.logger.warning(f"Failed to connect to database; skipping DB storage: {e}")
+            self.db_manager = None
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """
@@ -573,6 +633,14 @@ class DataStoragePipeline:
         adapter = ItemAdapter(item)
 
         try:
+            if not getattr(self, "db_manager", None):
+                return dict(adapter)
+
+            # Only characters go to MongoDB character collection for now.
+            # Other content types are still exported to files.
+            if adapter.get("content_type") and adapter.get("content_type") != "character":
+                return dict(adapter)
+
             # Create character document
             character_data = dict(adapter)
 
@@ -584,17 +652,16 @@ class DataStoragePipeline:
                 updated_character = self._merge_character_data(
                     existing_character, character_data
                 )
-                self.db_manager.update_character(
-                    existing_character["_id"], updated_character
-                )
-                self.updated_count += 1
+                if self.db_manager.update_character(existing_character["_id"], updated_character):  # type: ignore[union-attr]
+                    self.updated_count += 1
                 self.logger.info(
                     f"Updated existing character: {character_data.get('name')}"
                 )
             else:
                 # Insert new character
-                character_id = self.db_manager.insert_character(character_data)
-                self.inserted_count += 1
+                character_id = self.db_manager.insert_character(character_data)  # type: ignore[union-attr]
+                if character_id:
+                    self.inserted_count += 1
                 self.logger.info(
                     f"Inserted new character: {character_data.get('name')} (ID: {character_id})"
                 )
@@ -675,8 +742,9 @@ class DataStoragePipeline:
         Args:
             spider: Spider instance
         """
-        if hasattr(self, "db_manager"):
-            self.db_manager.disconnect()
+        db_manager = getattr(self, "db_manager", None)
+        if db_manager:
+            db_manager.disconnect()
 
         self.logger.info(
             f"Storage pipeline closed - Inserted: {self.inserted_count}, "
@@ -726,6 +794,8 @@ class DataQualityPipeline:
             Item with quality score and suggestions
         """
         adapter = ItemAdapter(item)
+        if adapter.get("content_type") and adapter.get("content_type") != "character":
+            return dict(adapter)
 
         # Calculate quality score
         quality_score = self._calculate_quality_score(dict(adapter))
@@ -1038,6 +1108,8 @@ class DuplicateFilterPipeline:
             Item if unique, raises DropItem if duplicate
         """
         adapter = ItemAdapter(item)
+        if adapter.get("content_type") and adapter.get("content_type") != "character":
+            return dict(adapter)
 
         # Generate character fingerprint
         fingerprint = self._generate_character_fingerprint(dict(adapter))
@@ -1132,20 +1204,46 @@ class FileExportPipeline:
     - Organized directory structure following AI_WAREHOUSE 3.0
     """
 
-    def __init__(self):
+    def __init__(self, settings=None):
         self.logger = get_logger(self.__class__.__name__)
         self.exported_count = 0
         self.failed_exports = 0
+        self.counts_by_type: Dict[str, int] = {}
 
-        # Load settings
-        from scrapy.utils.project import get_project_settings
-        settings = get_project_settings()
+        if settings is None:
+            from scrapy.utils.project import get_project_settings
 
-        self.enabled = settings.getbool('ENABLE_FILE_EXPORT', True)
-        self.base_path = Path(settings.get('FANDOM_DATA_ROOT', '/mnt/data/datasets/fandom'))
+            settings = get_project_settings()
 
-        # Index files tracking
-        self.character_indexes = {}  # {anime_name: [character_list]}
+        self.enabled = settings.getbool("ENABLE_FILE_EXPORT", True)
+        self.export_mode = settings.get("EXPORT_MODE", os.getenv("EXPORT_MODE", "per_item"))
+        self.export_json_gzip = settings.getbool("EXPORT_JSON_GZIP", os.getenv("EXPORT_JSON_GZIP", "false").lower() == "true")
+
+        # Stable schema fields for downstream consumers
+        self.schema_version = os.getenv("SCHEMA_VERSION", "1.0")
+        self.job_id = os.getenv("JOB_ID", "")
+        layout = settings.get("EXPORT_LAYOUT", os.getenv("EXPORT_LAYOUT", "")).strip().lower()
+        self.export_layout = layout or ("job" if self.job_id else "legacy")
+
+        if self.export_layout == "job":
+            # Job layout: a single job output root containing manifest.json + data/*.jsonl(.gz)
+            self.base_path = Path(os.getenv("FANDOM_DATA_ROOT", settings.get("FANDOM_DATA_ROOT", "/mnt/data/datasets/fandom")))
+            self.data_dir = self.base_path / "data"
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+            self.manifest_path = self.base_path / "manifest.json"
+            self._jsonl_handles = {}  # content_type -> file handle
+            self.character_indexes = None
+        else:
+            # Legacy layout: AI_WAREHOUSE 3.0 per-anime folders
+            self.base_path = Path(settings.get("FANDOM_DATA_ROOT", "/mnt/data/datasets/fandom"))
+            self.data_dir = None
+            self.manifest_path = None
+            self._jsonl_handles = {}  # (anime_name, content_type) -> file handle
+            self.character_indexes = {}  # {anime_name: [character_list]}
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(settings=crawler.settings)
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """
@@ -1168,17 +1266,33 @@ class FileExportPipeline:
             content_type = self._determine_content_type(adapter)
             anime_name = adapter.get('anime_name', 'unknown')
 
+            # Ensure schema fields are stable for downstream consumers
+            adapter.setdefault("schema_version", self.schema_version)
+            adapter.setdefault("content_type", content_type)
+            adapter.setdefault("source", "fandom")
+            if self.job_id:
+                adapter.setdefault("job_id", self.job_id)
+            wiki_url = getattr(spider, "wiki_url", None) or adapter.get("wiki_url")
+            if wiki_url:
+                adapter.setdefault("wiki_url", wiki_url)
+            adapter.setdefault("spider_name", getattr(spider, "name", ""))
+            adapter.setdefault("anime_name", anime_name)
+
             # Export based on content type
-            if content_type == 'character':
-                self._export_character(adapter, anime_name)
-            elif content_type == 'episode':
-                self._export_episode(adapter, anime_name)
-            elif content_type == 'gallery':
-                self._export_gallery_image(adapter, anime_name)
-            elif content_type == 'chapter':
-                self._export_chapter(adapter, anime_name)
+            if self.export_mode == "jsonl":
+                self._export_jsonl(adapter, anime_name, content_type)
+            else:
+                if content_type == 'character':
+                    self._export_character(adapter, anime_name)
+                elif content_type == 'episode':
+                    self._export_episode(adapter, anime_name)
+                elif content_type == 'gallery':
+                    self._export_gallery_image(adapter, anime_name)
+                elif content_type == 'chapter':
+                    self._export_chapter(adapter, anime_name)
 
             self.exported_count += 1
+            self.counts_by_type[content_type] = self.counts_by_type.get(content_type, 0) + 1
 
         except Exception as e:
             self.failed_exports += 1
@@ -1188,6 +1302,10 @@ class FileExportPipeline:
 
     def _determine_content_type(self, adapter: ItemAdapter) -> str:
         """Determine the type of content being exported."""
+        explicit_type = adapter.get('content_type')
+        if explicit_type:
+            return explicit_type
+
         # Check for specific fields to determine type
         if 'episode_number' in adapter or 'number' in adapter:
             if 'page_count' in adapter:
@@ -1200,43 +1318,57 @@ class FileExportPipeline:
 
     def _export_character(self, adapter: ItemAdapter, anime_name: str):
         """Export character data to JSON file."""
-        import json
+        import json, gzip
 
-        # Create directory structure
-        anime_dir = self.base_path / self._sanitize_name(anime_name)
-        characters_dir = anime_dir / 'characters'
-        characters_dir.mkdir(parents=True, exist_ok=True)
+        if self.export_layout == "job":
+            assert self.data_dir is not None
+            characters_dir = self.data_dir / "characters"
+            characters_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            anime_dir = self.base_path / self._sanitize_name(anime_name)
+            characters_dir = anime_dir / 'characters'
+            characters_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate character ID
         character_name = adapter.get('name', 'unknown')
         character_id = self._generate_id(f"{anime_name}:{character_name}")
 
         # Export individual character file
-        character_file = characters_dir / f"{character_id}.json"
+        suffix = ".json.gz" if self.export_json_gzip else ".json"
+        character_file = characters_dir / f"{character_id}{suffix}"
         character_data = dict(adapter)
 
-        with open(character_file, 'w', encoding='utf-8') as f:
-            json.dump(character_data, f, ensure_ascii=False, indent=2, default=str)
+        if self.export_json_gzip:
+            with gzip.open(character_file, 'wt', encoding='utf-8') as f:
+                json.dump(character_data, f, ensure_ascii=False, indent=2, default=str)
+        else:
+            with open(character_file, 'w', encoding='utf-8') as f:
+                json.dump(character_data, f, ensure_ascii=False, indent=2, default=str)
 
-        # Update character index
-        if anime_name not in self.character_indexes:
-            self.character_indexes[anime_name] = []
-
-        self.character_indexes[anime_name].append({
-            'id': character_id,
-            'name': character_name,
-            'file': f"{character_id}.json"
-        })
+        # Legacy: Update character index for easy browsing
+        if self.export_layout != "job" and isinstance(self.character_indexes, dict):
+            if anime_name not in self.character_indexes:
+                self.character_indexes[anime_name] = []
+            self.character_indexes[anime_name].append({
+                'id': character_id,
+                'name': character_name,
+                'file': f"{character_id}.json"
+            })
 
         self.logger.debug(f"Exported character: {character_name} to {character_file}")
 
     def _export_episode(self, adapter: ItemAdapter, anime_name: str):
         """Export episode data to JSON file."""
-        import json
+        import json, gzip
 
-        anime_dir = self.base_path / self._sanitize_name(anime_name)
-        episodes_dir = anime_dir / 'episodes'
-        episodes_dir.mkdir(parents=True, exist_ok=True)
+        if self.export_layout == "job":
+            assert self.data_dir is not None
+            episodes_dir = self.data_dir / "episodes"
+            episodes_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            anime_dir = self.base_path / self._sanitize_name(anime_name)
+            episodes_dir = anime_dir / 'episodes'
+            episodes_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate episode ID
         episode_num = adapter.get('number', adapter.get('episode_number', 0))
@@ -1248,42 +1380,62 @@ class FileExportPipeline:
             episode_id = f"ep{episode_num:03d}"
 
         # Export episode file
-        episode_file = episodes_dir / f"{episode_id}.json"
+        suffix = ".json.gz" if self.export_json_gzip else ".json"
+        episode_file = episodes_dir / f"{episode_id}{suffix}"
         episode_data = dict(adapter)
 
-        with open(episode_file, 'w', encoding='utf-8') as f:
-            json.dump(episode_data, f, ensure_ascii=False, indent=2, default=str)
+        if self.export_json_gzip:
+            with gzip.open(episode_file, 'wt', encoding='utf-8') as f:
+                json.dump(episode_data, f, ensure_ascii=False, indent=2, default=str)
+        else:
+            with open(episode_file, 'w', encoding='utf-8') as f:
+                json.dump(episode_data, f, ensure_ascii=False, indent=2, default=str)
 
         self.logger.debug(f"Exported episode {episode_num} to {episode_file}")
 
     def _export_gallery_image(self, adapter: ItemAdapter, anime_name: str):
         """Export gallery image metadata to JSON file."""
-        import json
+        import json, gzip
 
-        anime_dir = self.base_path / self._sanitize_name(anime_name)
-        gallery_dir = anime_dir / 'gallery'
-        gallery_dir.mkdir(parents=True, exist_ok=True)
+        if self.export_layout == "job":
+            assert self.data_dir is not None
+            gallery_dir = self.data_dir / "galleries"
+            gallery_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            anime_dir = self.base_path / self._sanitize_name(anime_name)
+            gallery_dir = anime_dir / 'gallery'
+            gallery_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate image ID
         image_url = adapter.get('url', '')
         image_id = self._generate_id(image_url)
 
         # Export image metadata
-        image_file = gallery_dir / f"{image_id}.json"
+        suffix = ".json.gz" if self.export_json_gzip else ".json"
+        image_file = gallery_dir / f"{image_id}{suffix}"
         image_data = dict(adapter)
 
-        with open(image_file, 'w', encoding='utf-8') as f:
-            json.dump(image_data, f, ensure_ascii=False, indent=2, default=str)
+        if self.export_json_gzip:
+            with gzip.open(image_file, 'wt', encoding='utf-8') as f:
+                json.dump(image_data, f, ensure_ascii=False, indent=2, default=str)
+        else:
+            with open(image_file, 'w', encoding='utf-8') as f:
+                json.dump(image_data, f, ensure_ascii=False, indent=2, default=str)
 
         self.logger.debug(f"Exported gallery image metadata to {image_file}")
 
     def _export_chapter(self, adapter: ItemAdapter, anime_name: str):
         """Export chapter data to JSON file."""
-        import json
+        import json, gzip
 
-        anime_dir = self.base_path / self._sanitize_name(anime_name)
-        chapters_dir = anime_dir / 'chapters'
-        chapters_dir.mkdir(parents=True, exist_ok=True)
+        if self.export_layout == "job":
+            assert self.data_dir is not None
+            chapters_dir = self.data_dir / "chapters"
+            chapters_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            anime_dir = self.base_path / self._sanitize_name(anime_name)
+            chapters_dir = anime_dir / 'chapters'
+            chapters_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate chapter ID
         chapter_num = adapter.get('number', adapter.get('chapter_number', 0))
@@ -1295,13 +1447,55 @@ class FileExportPipeline:
             chapter_id = f"ch{chapter_num:03d}"
 
         # Export chapter file
-        chapter_file = chapters_dir / f"{chapter_id}.json"
+        suffix = ".json.gz" if self.export_json_gzip else ".json"
+        chapter_file = chapters_dir / f"{chapter_id}{suffix}"
         chapter_data = dict(adapter)
 
-        with open(chapter_file, 'w', encoding='utf-8') as f:
-            json.dump(chapter_data, f, ensure_ascii=False, indent=2, default=str)
+        if self.export_json_gzip:
+            with gzip.open(chapter_file, 'wt', encoding='utf-8') as f:
+                json.dump(chapter_data, f, ensure_ascii=False, indent=2, default=str)
+        else:
+            with open(chapter_file, 'w', encoding='utf-8') as f:
+                json.dump(chapter_data, f, ensure_ascii=False, indent=2, default=str)
 
-        self.logger.debug(f"Exported chapter {chapter_num} to {chapter_file}")
+    def _data_filename_for_type(self, content_type: str) -> str:
+        mapping = {
+            "character": "characters",
+            "episode": "episodes",
+            "gallery": "galleries",
+            "chapter": "chapters",
+        }
+        return mapping.get(content_type, f"{content_type}s")
+
+    def _export_jsonl(self, adapter: ItemAdapter, anime_name: str, content_type: str):
+        """Export items as JSON Lines to reduce file count."""
+        import gzip
+        import json
+
+        suffix = ".jsonl.gz" if self.export_json_gzip else ".jsonl"
+        if self.export_layout == "job":
+            assert self.data_dir is not None
+            name = self._data_filename_for_type(content_type)
+            path = self.data_dir / f"{name}{suffix}"
+            key = content_type
+        else:
+            anime_dir = self.base_path / self._sanitize_name(anime_name)
+            metadata_dir = anime_dir / "metadata"
+            metadata_dir.mkdir(parents=True, exist_ok=True)
+            path = metadata_dir / f"{content_type}{suffix}"
+            key = (anime_name, content_type)
+
+        if key not in self._jsonl_handles:
+            if self.export_json_gzip:
+                self._jsonl_handles[key] = gzip.open(path, "at", encoding="utf-8")
+            else:
+                self._jsonl_handles[key] = open(path, "a", encoding="utf-8")
+
+        handle = self._jsonl_handles[key]
+        handle.write(json.dumps(dict(adapter), ensure_ascii=False, default=str) + "\n")
+        handle.flush()
+
+        self.logger.debug(f"Exported {content_type} JSONL line to {path}")
 
     def _sanitize_name(self, name: str) -> str:
         """Sanitize name for use as directory name."""
@@ -1324,41 +1518,90 @@ class FileExportPipeline:
         """
         import json
 
-        # Write character indexes
-        for anime_name, characters in self.character_indexes.items():
-            anime_dir = self.base_path / self._sanitize_name(anime_name)
-            characters_dir = anime_dir / 'characters'
+        # Close jsonl handles (if any)
+        for handle in self._jsonl_handles.values():
+            try:
+                handle.close()
+            except Exception:
+                pass
+        self._jsonl_handles = {}
 
-            index_file = characters_dir / 'character_index.json'
-            index_data = {
-                'anime_name': anime_name,
-                'total_characters': len(characters),
-                'characters': characters,
-                'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+        if self.export_layout == "job":
+            stats = {}
+            try:
+                stats = getattr(spider, "crawler", None).stats.get_stats() if getattr(spider, "crawler", None) else {}
+            except Exception:
+                stats = {}
+
+            manifest = {
+                "schema_version": self.schema_version,
+                "job_id": self.job_id or None,
+                "source": "fandom",
+                "spider_name": getattr(spider, "name", ""),
+                "anime_name": getattr(spider, "anime_name", None),
+                "wiki_url": getattr(spider, "wiki_url", None),
+                "scrape_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "export_mode": self.export_mode,
+                "export_json_gzip": bool(self.export_json_gzip),
+                "items_exported": self.exported_count,
+                "failed_exports": self.failed_exports,
+                "counts_by_type": self.counts_by_type,
+                "categories_scraped": getattr(spider, "crawl_config", {}),
+                "scrapy_stats": stats,
+                "outputs": {},
             }
 
-            with open(index_file, 'w', encoding='utf-8') as f:
-                json.dump(index_data, f, ensure_ascii=False, indent=2)
+            for content_type in sorted(self.counts_by_type.keys()):
+                name = self._data_filename_for_type(content_type)
+                suffix = ".jsonl.gz" if self.export_json_gzip else ".jsonl"
+                rel = f"data/{name}{suffix}"
+                manifest["outputs"][content_type] = {"path": rel, "count": self.counts_by_type.get(content_type, 0)}
 
-            self.logger.info(f"Wrote character index for {anime_name}: {len(characters)} characters")
+            if self.manifest_path:
+                try:
+                    with open(self.manifest_path, "w", encoding="utf-8") as f:
+                        json.dump(manifest, f, ensure_ascii=False, indent=2, default=str)
+                except Exception as e:
+                    self.logger.error(f"Failed to write manifest: {e}")
+        else:
+            # Legacy: write character indexes + scrape manifest under per-anime metadata
+            if isinstance(self.character_indexes, dict):
+                for anime_name, characters in self.character_indexes.items():
+                    anime_dir = self.base_path / self._sanitize_name(anime_name)
+                    characters_dir = anime_dir / 'characters'
+                    characters_dir.mkdir(parents=True, exist_ok=True)
 
-        # Write scrape manifest
-        if hasattr(spider, 'anime_name'):
-            anime_dir = self.base_path / self._sanitize_name(spider.anime_name)
-            metadata_dir = anime_dir / 'metadata'
-            metadata_dir.mkdir(parents=True, exist_ok=True)
+                    index_file = characters_dir / 'character_index.json'
+                    index_data = {
+                        'anime_name': anime_name,
+                        'total_characters': len(characters),
+                        'characters': characters,
+                        'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+                    }
 
-            manifest_file = metadata_dir / 'scrape_manifest.json'
-            manifest_data = {
-                'anime_name': spider.anime_name,
-                'spider_name': spider.name,
-                'scrape_date': time.strftime('%Y-%m-%d %H:%M:%S'),
-                'items_exported': self.exported_count,
-                'failed_exports': self.failed_exports,
-                'categories_scraped': getattr(spider, 'crawl_config', {})
-            }
+                    with open(index_file, 'w', encoding='utf-8') as f:
+                        json.dump(index_data, f, ensure_ascii=False, indent=2)
 
-            with open(manifest_file, 'w', encoding='utf-8') as f:
-                json.dump(manifest_data, f, ensure_ascii=False, indent=2)
+                    self.logger.info(f"Wrote character index for {anime_name}: {len(characters)} characters")
 
-        self.logger.info(f"File export complete: {self.exported_count} items exported, {self.failed_exports} failed")
+            if hasattr(spider, 'anime_name'):
+                anime_dir = self.base_path / self._sanitize_name(spider.anime_name)
+                metadata_dir = anime_dir / 'metadata'
+                metadata_dir.mkdir(parents=True, exist_ok=True)
+
+                manifest_file = metadata_dir / 'scrape_manifest.json'
+                manifest_data = {
+                    'anime_name': spider.anime_name,
+                    'spider_name': spider.name,
+                    'scrape_date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'items_exported': self.exported_count,
+                    'failed_exports': self.failed_exports,
+                    'categories_scraped': getattr(spider, 'crawl_config', {})
+                }
+
+                with open(manifest_file, 'w', encoding='utf-8') as f:
+                    json.dump(manifest_data, f, ensure_ascii=False, indent=2)
+
+        self.logger.info(
+            f"File export complete: {self.exported_count} items exported, {self.failed_exports} failed"
+        )

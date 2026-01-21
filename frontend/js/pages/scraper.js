@@ -18,6 +18,8 @@ import {
     pauseUniversalScraper,
     resumeUniversalScraper,
     getUniversalLogs,
+    listUniversalJobs,
+    selectUniversalJob,
     // Legacy API (保留用於歷史記錄)
     getScraperHistory
 } from '../api/scraper.js';
@@ -81,7 +83,7 @@ export async function renderScraperPage(container) {
                                 <div id="input-mode-name">
                                     <div class="form-group">
                                         <label class="form-label">動畫名稱</label>
-                                        <div class="input-group">
+                                        <div class="input-group--horizontal">
                                             <input type="text" class="input" id="anime-name-input"
                                                 placeholder="例如: Attack on Titan" autocomplete="off">
                                             <button type="button" class="btn btn--primary" id="search-anime-btn">
@@ -117,25 +119,21 @@ export async function renderScraperPage(container) {
                                 <!-- 爬取範圍 -->
                                 <div class="form-group">
                                     <label class="form-label">爬取範圍</label>
-                                    <div class="checkbox-group">
-                                        <label class="checkbox">
-                                            <input type="checkbox" id="crawl-characters" checked>
-                                            <span class="checkbox__mark"></span>
+                                    <div class="checkbox-group--vertical">
+                                        <label class="checkbox-wrapper">
+                                            <input type="checkbox" class="checkbox" id="crawl-characters" checked>
                                             <span class="checkbox__label">角色資料 (Characters)</span>
                                         </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox" id="crawl-episodes" checked>
-                                            <span class="checkbox__mark"></span>
+                                        <label class="checkbox-wrapper">
+                                            <input type="checkbox" class="checkbox" id="crawl-episodes" checked>
                                             <span class="checkbox__label">劇集資料 (Episodes)</span>
                                         </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox" id="crawl-galleries" checked>
-                                            <span class="checkbox__mark"></span>
+                                        <label class="checkbox-wrapper">
+                                            <input type="checkbox" class="checkbox" id="crawl-galleries" checked>
                                             <span class="checkbox__label">圖庫資料 (Gallery)</span>
                                         </label>
-                                        <label class="checkbox">
-                                            <input type="checkbox" id="crawl-chapters">
-                                            <span class="checkbox__mark"></span>
+                                        <label class="checkbox-wrapper">
+                                            <input type="checkbox" class="checkbox" id="crawl-chapters">
                                             <span class="checkbox__label">章節資料 (Chapters/Manga)</span>
                                         </label>
                                     </div>
@@ -183,6 +181,35 @@ export async function renderScraperPage(container) {
                                             <input type="number" class="input" id="retries"
                                                 value="3" min="0" max="10">
                                         </div>
+                                        <div class="form-group">
+                                            <label class="form-label">儲存/空間</label>
+                                            <div class="checkbox-group--vertical">
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="use-playwright">
+                                                    <span>一開始就使用 Playwright（較慢，但更能抗封鎖）</span>
+                                                </label>
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="use-playwright-detail">
+                                                    <span>Detail pages 使用 Playwright（更慢，但遇到 JS/封鎖更穩）</span>
+                                                </label>
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="download-images">
+                                                    <span>下載圖片（非常佔空間，預設關閉）</span>
+                                                </label>
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="export-gzip" checked>
+                                                    <span>JSON 壓縮（.gz）</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">JSON 輸出模式</label>
+                                            <select class="input" id="export-mode">
+                                                <option value="jsonl" selected>jsonl（單檔追加，檔案數最少）</option>
+                                                <option value="per_item">per_item（每筆 1 檔，易讀但檔案很多）</option>
+                                            </select>
+                                            <p class="form-help">建議使用 jsonl + gzip 來降低檔案數與容量</p>
+                                        </div>
                                     </div>
                                 </details>
 
@@ -229,6 +256,21 @@ export async function renderScraperPage(container) {
                                     <p class="text-muted">載入中...</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近任務 -->
+                    <div class="card mt-lg">
+                        <div class="card__header">
+                            <h3 class="card__title">最近任務</h3>
+                            <button class="btn btn--sm btn--ghost" id="refresh-jobs-btn">
+                                <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="card__body">
+                            <div id="jobs-list" class="text-sm text-muted">載入中...</div>
                         </div>
                     </div>
                 </div>
@@ -346,6 +388,9 @@ export async function renderScraperPage(container) {
     // 載入歷史記錄
     loadHistory(container);
 
+    // 載入最近任務
+    loadJobs(container);
+
     // 連接 WebSocket
     connectWebSocket(container);
 }
@@ -380,6 +425,9 @@ function bindScraperEvents(container) {
             performAnimeSearch(container);
         }
     });
+
+    // 最近任務
+    container.querySelector('#refresh-jobs-btn')?.addEventListener('click', () => loadJobs(container));
 
     // 表單提交
     const form = container.querySelector('#universal-scraper-form');
@@ -502,7 +550,12 @@ async function startUniversalScraping(container) {
         max_gallery_images: parseInt(container.querySelector('#max-gallery').value) || 0,
         max_chapters: parseInt(container.querySelector('#max-chapters').value) || 0,
         delay: parseFloat(container.querySelector('#delay').value) || 1.0,
-        retries: parseInt(container.querySelector('#retries').value) || 3
+        retries: parseInt(container.querySelector('#retries').value) || 3,
+        use_playwright: container.querySelector('#use-playwright')?.checked || false,
+        use_playwright_detail_pages: container.querySelector('#use-playwright-detail')?.checked || false,
+        download_images: container.querySelector('#download-images')?.checked || false,
+        export_mode: container.querySelector('#export-mode')?.value || 'jsonl',
+        export_json_gzip: container.querySelector('#export-gzip')?.checked ?? true
     };
 
     // 驗證至少選擇一個類別
@@ -513,14 +566,58 @@ async function startUniversalScraping(container) {
     }
 
     try {
-        await startUniversalScraper(config);
+        const result = await startUniversalScraper(config);
         updateStatus(container, 'running');
         scraperState.logs = [];
+        await loadJobs(container);
         toast.success('Universal Scraper 已啟動');
-        addLog(container, { level: 'info', message: 'Universal Scraper 已啟動', timestamp: new Date() });
+        addLog(container, { level: 'info', message: `Universal Scraper 已啟動 (Job: ${result.job_id || '-'})`, timestamp: new Date() });
     } catch (error) {
         toast.error(`啟動失敗: ${error.message}`);
         console.error('Start error:', error);
+    }
+}
+
+async function loadJobs(container) {
+    const listEl = container.querySelector('#jobs-list');
+    if (!listEl) return;
+
+    try {
+        const jobs = await listUniversalJobs(10);
+        if (!jobs || jobs.length === 0) {
+            listEl.innerHTML = '<div class="empty-state">暫無任務</div>';
+            return;
+        }
+
+        listEl.innerHTML = jobs.map(j => {
+            const created = new Date(j.created_at).toLocaleString('zh-TW');
+            const source = j.config?.input_source || '';
+            return `
+                <div class="flex items-center justify-between gap-sm mb-sm">
+                    <div class="flex-1">
+                        <div class="text-sm"><strong>${j.job_id}</strong> <span class="text-muted">(${j.status})</span></div>
+                        <div class="text-xs text-muted">${created} • ${source}</div>
+                    </div>
+                    <button class="btn btn--sm btn--ghost" data-job-select="${j.job_id}">切換</button>
+                </div>
+            `;
+        }).join('');
+
+        listEl.querySelectorAll('[data-job-select]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const jobId = btn.getAttribute('data-job-select');
+                try {
+                    await selectUniversalJob(jobId);
+                    await loadCurrentStatus(container);
+                    toast.info(`已切換到任務 ${jobId}`);
+                } catch (e) {
+                    toast.error(e.message);
+                }
+            });
+        });
+
+    } catch (e) {
+        listEl.innerHTML = '<div class="text-muted">載入失敗</div>';
     }
 }
 

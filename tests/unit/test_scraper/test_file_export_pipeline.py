@@ -52,7 +52,11 @@ def pipeline(temp_export_dir):
     """Create FileExportPipeline instance with mocked settings."""
     with patch('scrapy.utils.project.get_project_settings') as mock_get_settings:
         mock_settings = Mock()
-        mock_settings.getbool = Mock(return_value=True)
+        def _getbool(key, default=None):
+            if key == "EXPORT_JSON_GZIP":
+                return False
+            return True
+        mock_settings.getbool = Mock(side_effect=_getbool)
         mock_settings.get = Mock(return_value=str(temp_export_dir))
         mock_get_settings.return_value = mock_settings
 

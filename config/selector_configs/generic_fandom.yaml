@@ -1,0 +1,99 @@
+data_extraction_rules:
+  image_processing:
+  - resolve_relative_urls
+  - filter_minimum_size
+  - deduplicate_urls
+  text_cleanup:
+  - strip_whitespace
+  - remove_citations
+  - normalize_unicode
+fallback_strategies:
+  character_name:
+    primary: h1.page-header__title
+    secondary: .page-header__title
+    tertiary: h1
+selectors:
+  character_list:
+    character_links:
+      attribute: href
+      description: Links to individual character pages
+      multiple: true
+      selector: .category-page__members a
+      selector_type: css
+    next_page:
+      attribute: href
+      description: Next page link for pagination
+      required: false
+      selector: .category-page__pagination-next
+      selector_type: css
+    url_pattern: https://{anime}.fandom.com/wiki/Category:Characters
+  character_page:
+    description:
+      description: Character description paragraph
+      fallback_selectors:
+      - .mw-content-text > p:first-of-type
+      - .WikiaArticle p:first-of-type
+      required: false
+      selector: .mw-parser-output > p:first-of-type
+      selector_type: css
+    gallery_images:
+      attribute: src
+      description: Gallery images of character
+      multiple: true
+      required: false
+      selector: .wikia-gallery img
+      selector_type: css
+    infobox:
+      description: Main character information box
+      fallback_selectors:
+      - .infobox
+      - .character-infobox
+      required: false
+      selector: .portable-infobox
+      selector_type: css
+    main_image:
+      attribute: src
+      description: Main character image
+      fallback_selectors:
+      - .infobox img
+      - .character-image img
+      required: false
+      selector: .pi-image img
+      selector_type: css
+    name:
+      description: Character name from page header
+      fallback_selectors:
+      - .page-header__title
+      - h1
+      - .mw-page-title-main
+      required: true
+      selector: h1.page-header__title
+      selector_type: css
+  infobox_fields:
+    age:
+      description: Character age from infobox
+      fallback_selectors:
+      - .age .pi-data-value
+      - .infobox-data[data-source='age']
+      required: false
+      selector: '[data-source=''age''] .pi-data-value'
+      selector_type: css
+    gender:
+      description: Character gender
+      fallback_selectors:
+      - .gender .pi-data-value
+      required: false
+      selector: '[data-source=''gender''] .pi-data-value'
+      selector_type: css
+    occupation:
+      description: Character occupation
+      fallback_selectors:
+      - .occupation .pi-data-value
+      required: false
+      selector: '[data-source=''occupation''] .pi-data-value'
+      selector_type: css
+    status:
+      description: Character status (alive, deceased, etc.)
+      required: false
+      selector: '[data-source=''status''] .pi-data-value'
+      selector_type: css

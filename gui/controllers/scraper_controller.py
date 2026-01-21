@@ -23,7 +23,6 @@ from PyQt6.QtWidgets import QMessageBox
 
 from scrapy.crawler import CrawlerProcess, CrawlerRunner
 from scrapy.utils.project import get_project_settings
-from twisted.internet import reactor, defer
 from twisted.internet.defer import inlineCallbacks
 
 from utils.logger import get_logger

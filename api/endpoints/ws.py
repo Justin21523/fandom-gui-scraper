@@ -45,6 +45,8 @@ async def websocket_endpoint(websocket: WebSocket):
             },
             client_id,
         )
+        # Frontend currently doesn't actively subscribe; default to scraping updates.
+        manager.subscribe(client_id, "scraping")
 
         # Handle incoming messages
         while True:
@@ -64,8 +66,8 @@ async def handle_client_message(client_id: str, data: Dict[str, Any]):
         client_id: The client ID
         data: The message data
     """
-    action = data.get("action")
-    channel = data.get("channel")
+    action = data.get("action") or data.get("type")
+    channel = data.get("channel") or (data.get("data") or {}).get("channel")
 
     if action == "subscribe" and channel:
         manager.subscribe(client_id, channel)

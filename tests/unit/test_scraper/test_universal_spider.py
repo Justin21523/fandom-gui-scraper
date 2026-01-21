@@ -508,7 +508,11 @@ class TestStartRequests:
 
         # Verify all requests have correct callback
         for request in requests:
-            assert request.callback == spider.parse_category_page
+            # Category:* variants now use the MediaWiki API for consistency.
+            if "api.php" in request.url:
+                assert request.callback == spider.parse_category_api
+            else:
+                assert request.callback == spider.parse_category_page
             assert 'category' in request.meta
 
     def test_start_requests_respects_enabled_categories(self):

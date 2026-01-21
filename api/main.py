@@ -10,6 +10,7 @@ Usage:
 
 import logging
 from contextlib import asynccontextmanager
+import asyncio
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +21,7 @@ from api.endpoints import characters, auth, ws, scraper
 from api.middleware.rate_limit import RateLimitMiddleware
 from api.schemas.character import ErrorResponse
 from api.plugins import plugin_manager
+from api.jobs.listener import start_event_listener
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,16 @@ async def lifespan(app: FastAPI):
     plugin_manager.register_plugins(app)
     plugin_manager.startup_plugins()
 
+    stop_event, listener_task = start_event_listener()
+
     yield
+
+    # Stop event listener
+    stop_event.set()
+    try:
+        await asyncio.wait_for(listener_task, timeout=5)
+    except Exception:
+        listener_task.cancel()
 
     # Shutdown plugins
     plugin_manager.shutdown_plugins()

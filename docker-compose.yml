@@ -1,0 +1,72 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      FANDOM_DATA_ROOT: /data
+      ENABLE_FILE_EXPORT: "true"
+      DOWNLOAD_IMAGES: "false"
+      EXPORT_MODE: "jsonl"          # per_item | jsonl
+      EXPORT_JSON_GZIP: "true"
+      LOG_LEVEL: INFO
+      AUTH_DISABLED: "true"
+      ENABLE_MONGO: "false"
+      MONGO_URI: mongodb://mongo:27017/
+      MONGO_DATABASE: fandom_scraper
+      JOBS_MAX_TOTAL_BYTES: "53687091200" # 50GB
+      JOB_CACHE_MAX_BYTES: "1073741824"   # 1GB
+      JOB_LOG_MAX_BYTES: "5242880"        # 5MB
+      JOB_LOG_BACKUPS: "3"
+    volumes:
+      - fandom_data:/data
+    ports:
+      - "18000:8000"
+    depends_on:
+      - redis
+      - mongo
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      FANDOM_DATA_ROOT: /data
+      ENABLE_FILE_EXPORT: "true"
+      DOWNLOAD_IMAGES: "false"
+      EXPORT_MODE: "jsonl"
+      EXPORT_JSON_GZIP: "true"
+      LOG_LEVEL: INFO
+      AUTH_DISABLED: "true"
+      ENABLE_MONGO: "false"
+      MONGO_URI: mongodb://mongo:27017/
+      MONGO_DATABASE: fandom_scraper
+      JOBS_MAX_TOTAL_BYTES: "53687091200"
+      JOB_CACHE_MAX_BYTES: "1073741824"
+      JOB_LOG_MAX_BYTES: "5242880"
+      JOB_LOG_BACKUPS: "3"
+    volumes:
+      - fandom_data:/data
+    depends_on:
+      - redis
+      - mongo
+    command: ["python", "-m", "api.jobs.worker"]
+
+volumes:
+  fandom_data:
+  redis_data:
+  mongo_data:

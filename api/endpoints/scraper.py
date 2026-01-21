@@ -13,10 +13,14 @@ import asyncio
 import logging
 import threading
 import json
+import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 
 from api.security.jwt import get_current_user
@@ -129,6 +133,14 @@ class UniversalScraperConfig(BaseModel):
     # General settings
     delay: float = Field(default=1.0, ge=0, le=10, description="Delay between requests in seconds")
     retries: int = Field(default=3, ge=0, le=10, description="Number of retries on failure")
+
+    # Storage controls (optional; used by job-based runner)
+    use_playwright: bool = Field(default=False, description="Enable Playwright from the start")
+    use_playwright_detail_pages: bool = Field(default=False, description="Use Playwright for detail pages (heavier, but more reliable on blocked wikis)")
+    download_images: bool = Field(default=False, description="Download images (storage heavy)")
+    export_mode: str = Field(default=os.getenv("EXPORT_MODE", "jsonl"), description="per_item | jsonl")
+    export_json_gzip: bool = Field(default=os.getenv("EXPORT_JSON_GZIP", "false").lower() == "true", description="Compress JSON exports")
+    keep_job_days: int = Field(default=14, ge=1, le=365, description="Retention for job outputs")
 
 
 class CategoryProgress(BaseModel):
@@ -767,6 +779,337 @@ class UniversalScraperState:
 universal_scraper_state = UniversalScraperState()
 
 
+# ========================================
+# JOB-BASED UNIVERSAL SCRAPER (MULTI JOB)
+# ========================================
+
+JOBS_AVAILABLE = False
+try:  # pragma: no cover
+    from api.jobs.queue import get_queue, get_redis_text as get_redis, REDIS_AVAILABLE
+
+    JOBS_AVAILABLE = bool(REDIS_AVAILABLE)
+    if JOBS_AVAILABLE:
+        from api.jobs.models import UniversalJobRequest, UniversalJobInfo
+        from api.jobs.store import (
+            create_job,
+            get_job,
+            list_jobs,
+            get_logs,
+            request_stop,
+            request_pause,
+        )
+        from api.jobs.tasks import run_universal_job
+        from api.jobs.cleanup import cleanup_expired_jobs
+        from api.jobs.fs import get_job_dir, compute_output_stats, list_files, build_zip
+except Exception:
+    JOBS_AVAILABLE = False
+
+if not JOBS_AVAILABLE:
+    # Minimal stubs to keep module importable in environments without Redis/RQ.
+    class UniversalJobInfo(BaseModel):  # type: ignore
+        job_id: str = ""
+
+
+
+def _current_job_key() -> str:
+    return "scraper:universal:current_job_id"
+
+
+def _set_current_job(job_id: str) -> None:
+    get_redis().set(_current_job_key(), job_id)
+
+
+def _get_current_job() -> Optional[str]:
+    return get_redis().get(_current_job_key())
+
+
+@router.post("/jobs", response_model=UniversalJobInfo)
+async def create_universal_job(
+    config: UniversalScraperConfig,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available (Redis/RQ not installed)")
+    """
+    Create a Universal Scraper job (queued) and run it in a separate worker.
+    """
+    job_id = uuid.uuid4().hex[:12]
+
+    job_req = UniversalJobRequest(
+        input_source=config.input_source,
+        input_type="name" if config.input_type == "name" else "url",
+        crawl_characters=config.crawl_characters,
+        crawl_episodes=config.crawl_episodes,
+        crawl_galleries=config.crawl_galleries,
+        crawl_chapters=config.crawl_chapters,
+        max_chars=config.max_chars,
+        max_episodes=config.max_episodes,
+        max_gallery_images=config.max_gallery_images,
+        max_chapters=config.max_chapters,
+        delay=config.delay,
+        retries=config.retries,
+        use_playwright=getattr(config, "use_playwright", False),
+        use_playwright_detail_pages=getattr(config, "use_playwright_detail_pages", False),
+        download_images=getattr(config, "download_images", False),
+        export_mode=getattr(config, "export_mode", "jsonl"),
+        export_json_gzip=getattr(config, "export_json_gzip", True),
+        keep_job_days=getattr(config, "keep_job_days", 14),
+    )
+
+    # Store job metadata
+    output_root = f"{os.getenv('FANDOM_DATA_ROOT', '/data')}/jobs/{job_id}"
+    create_job(job_id, job_req, output_root=output_root)
+    _set_current_job(job_id)
+
+    # Enqueue work
+    q = get_queue()
+    q.enqueue(run_universal_job, job_id, job_req.model_dump())
+
+    info = get_job(job_id)
+    if not info:
+        raise HTTPException(status_code=500, detail="Failed to create job")
+    return info
+
+
+@router.get("/jobs", response_model=list[UniversalJobInfo])
+async def list_universal_jobs_api(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    return list_jobs(limit=limit)
+
+
+@router.get("/jobs/{job_id}", response_model=UniversalJobInfo)
+async def get_universal_job_api(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    info = get_job(job_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return info
+
+
+@router.get("/jobs/{job_id}/logs")
+async def get_universal_job_logs_api(
+    job_id: str,
+    limit: int = 200,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    return {"job_id": job_id, "logs": get_logs(job_id, limit=limit)}
+
+
+@router.post("/jobs/{job_id}/stop")
+async def stop_universal_job_api(job_id: str, current_user: dict = Depends(get_current_user)):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    request_stop(job_id)
+    return {"status": "stopping", "job_id": job_id}
+
+
+@router.post("/jobs/{job_id}/pause")
+async def pause_universal_job_api(job_id: str, current_user: dict = Depends(get_current_user)):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    request_pause(job_id, True)
+    return {"status": "paused", "job_id": job_id}
+
+
+@router.post("/jobs/{job_id}/resume")
+async def resume_universal_job_api(job_id: str, current_user: dict = Depends(get_current_user)):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    request_pause(job_id, False)
+    return {"status": "running", "job_id": job_id}
+
+@router.post("/jobs/{job_id}/select")
+async def select_universal_job_api(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Set current job for legacy endpoints (/universal-status, /universal-logs)."""
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    info = get_job(job_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="Job not found")
+    _set_current_job(job_id)
+    return {"status": "ok", "job_id": job_id}
+
+@router.get("/jobs/{job_id}/files")
+async def list_universal_job_files_api(
+    job_id: str,
+    limit: int = 2000,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    job_dir = get_job_dir(job_id)
+    return {"job_id": job_id, "items": list_files(job_dir, max_entries=limit)}
+
+
+@router.get("/jobs/{job_id}/output-stats")
+async def get_universal_job_output_stats_api(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    job_dir = get_job_dir(job_id)
+    return {"job_id": job_id, "stats": compute_output_stats(job_dir)}
+
+@router.get("/jobs/{job_id}/manifest")
+async def get_universal_job_manifest_api(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    job_dir = get_job_dir(job_id)
+    manifest = job_dir / "manifest.json"
+    if not manifest.exists():
+        raise HTTPException(status_code=404, detail="manifest.json not found")
+    try:
+        with open(manifest, "r", encoding="utf-8") as f:
+            return {"job_id": job_id, "manifest": json.load(f)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read manifest: {e}")
+
+
+@router.get("/jobs/{job_id}/file-preview")
+async def preview_universal_job_file_api(
+    job_id: str,
+    path: str,
+    limit: int = 200,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Preview a small number of lines/records from an output file for the frontend Browse view.
+    Supports .json, .jsonl, .jsonl.gz.
+    """
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    if limit < 1 or limit > 2000:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 2000")
+
+    job_dir = get_job_dir(job_id)
+    base = job_dir.resolve()
+    target = (job_dir / path).resolve()
+    if base not in target.parents and target != base:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    suffixes = "".join(target.suffixes).lower()
+    try:
+        if suffixes.endswith(".jsonl.gz"):
+            import gzip
+            items: List[Dict[str, Any]] = []
+            with gzip.open(target, "rt", encoding="utf-8", errors="replace") as f:
+                for _ in range(limit):
+                    line = f.readline()
+                    if not line:
+                        break
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        items.append(json.loads(line))
+                    except Exception:
+                        items.append({"_raw": line})
+            return {"job_id": job_id, "path": path, "type": "jsonl", "items": items}
+
+        if suffixes.endswith(".jsonl"):
+            items = []
+            with open(target, "r", encoding="utf-8", errors="replace") as f:
+                for _ in range(limit):
+                    line = f.readline()
+                    if not line:
+                        break
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        items.append(json.loads(line))
+                    except Exception:
+                        items.append({"_raw": line})
+            return {"job_id": job_id, "path": path, "type": "jsonl", "items": items}
+
+        if suffixes.endswith(".json"):
+            with open(target, "r", encoding="utf-8", errors="replace") as f:
+                return {"job_id": job_id, "path": path, "type": "json", "data": json.load(f)}
+
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preview failed: {e}")
+
+
+@router.post("/jobs/{job_id}/delete")
+async def delete_universal_job_api(job_id: str, current_user: dict = Depends(get_current_user)):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    # request stop first
+    request_stop(job_id)
+    # delete outputs + metadata
+    from api.jobs.store import delete_job_metadata
+    import shutil
+
+    job_dir = get_job_dir(job_id)
+    if job_dir.exists():
+        shutil.rmtree(job_dir)
+    delete_job_metadata(job_id)
+    return {"status": "deleted", "job_id": job_id}
+
+
+@router.get("/jobs/{job_id}/download")
+async def download_universal_job_api(
+    job_id: str,
+    include_images: bool = True,
+    current_user: dict = Depends(get_current_user),
+):
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    job_dir = get_job_dir(job_id)
+    if not job_dir.exists():
+        raise HTTPException(status_code=404, detail="Job output not found")
+
+    from tempfile import NamedTemporaryFile
+
+    tmp = NamedTemporaryFile(delete=False, suffix=".zip")
+    tmp_path = Path(tmp.name)
+    tmp.close()
+    build_zip(job_dir, tmp_path, include_images=include_images)
+
+    filename = f"fandom_job_{job_id}.zip"
+    def _cleanup():
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    return FileResponse(
+        path=str(tmp_path),
+        filename=filename,
+        media_type="application/zip",
+        background=BackgroundTask(_cleanup),
+    )
+
+
+@router.post("/jobs/cleanup")
+async def cleanup_jobs_api(
+    current_user: dict = Depends(get_current_user),
+):
+    """Cleanup expired job outputs based on each job's keep_job_days."""
+    if not JOBS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Job queue not available")
+    return cleanup_expired_jobs()
+
+
 @router.post("/search-anime", response_model=List[FandomSearchResult])
 async def search_anime(request: AnimeSearchRequest):
     """
@@ -818,119 +1161,174 @@ async def start_universal_scraper(
     - Per-category limits
     - Real-time progress tracking
     """
-    if universal_scraper_state.status == "running":
-        raise HTTPException(status_code=400, detail="Universal scraper is already running")
+    if not JOBS_AVAILABLE:
+        # Legacy in-process runner (used in test environment)
+        if universal_scraper_state.status == "running":
+            raise HTTPException(status_code=400, detail="Universal scraper is already running")
 
-    # Initialize state
-    universal_scraper_state.config = config
-    universal_scraper_state.status = "running"
-    universal_scraper_state.started_at = datetime.now()
-    universal_scraper_state.error = None
+        universal_scraper_state.config = config
+        universal_scraper_state.status = "running"
+        universal_scraper_state.started_at = datetime.now()
+        universal_scraper_state.error = None
 
-    # Initialize progress
-    universal_scraper_state.progress = UniversalScraperProgress(
-        characters=CategoryProgress(
-            enabled=config.crawl_characters,
-            total=0,
-            completed=0,
-            failed=0,
-            max_limit=config.max_chars
-        ),
-        episodes=CategoryProgress(
-            enabled=config.crawl_episodes,
-            total=0,
-            completed=0,
-            failed=0,
-            max_limit=config.max_episodes
-        ),
-        galleries=CategoryProgress(
-            enabled=config.crawl_galleries,
-            total=0,
-            completed=0,
-            failed=0,
-            max_limit=config.max_gallery_images
-        ),
-        chapters=CategoryProgress(
-            enabled=config.crawl_chapters,
-            total=0,
-            completed=0,
-            failed=0,
-            max_limit=config.max_chapters
-        ),
-        overall_completed=0,
-        overall_total=0
-    )
+        universal_scraper_state.progress = UniversalScraperProgress(
+            characters=CategoryProgress(
+                enabled=config.crawl_characters, total=0, completed=0, failed=0, max_limit=config.max_chars
+            ),
+            episodes=CategoryProgress(
+                enabled=config.crawl_episodes, total=0, completed=0, failed=0, max_limit=config.max_episodes
+            ),
+            galleries=CategoryProgress(
+                enabled=config.crawl_galleries, total=0, completed=0, failed=0, max_limit=config.max_gallery_images
+            ),
+            chapters=CategoryProgress(
+                enabled=config.crawl_chapters, total=0, completed=0, failed=0, max_limit=config.max_chapters
+            ),
+            overall_completed=0,
+            overall_total=0,
+        )
 
-    universal_scraper_state.add_log("info", f"Starting Universal Scraper for: {config.input_source}")
+        universal_scraper_state.add_log("info", f"Starting Universal Scraper for: {config.input_source}")
+        background_tasks.add_task(run_universal_scraper, config)
 
-    # Start scraping in background
-    background_tasks.add_task(run_universal_scraper, config)
+        return {
+            "status": "started",
+            "message": f"Universal scraper started for {config.input_source}",
+            "input_type": config.input_type,
+        }
 
+    # Job-based runner
+    job_info = await create_universal_job(config, current_user=current_user)  # type: ignore
     return {
         "status": "started",
-        "message": f"Universal scraper started for {config.input_source}",
-        "input_type": config.input_type
+        "job_id": job_info.job_id,
+        "message": f"Universal scraper job queued for {config.input_source}",
+        "input_type": config.input_type,
     }
 
 
 @router.get("/universal-status", response_model=UniversalScraperStatus)
 async def get_universal_status():
     """Get current Universal Scraper status with per-category progress."""
+    if not JOBS_AVAILABLE:
+        return UniversalScraperStatus(
+            status=universal_scraper_state.status,
+            started_at=universal_scraper_state.started_at,
+            anime_name=universal_scraper_state.anime_name,
+            wiki_url=universal_scraper_state.wiki_url,
+            progress=universal_scraper_state.progress,
+            error=universal_scraper_state.error,
+        )
+    job_id = _get_current_job()
+    if not job_id:
+        return UniversalScraperStatus(status="idle")
+
+    info = get_job(job_id)
+    if not info:
+        return UniversalScraperStatus(status="idle")
+
+    # Map job status to legacy status values
+    legacy_status = info.status.value
+    if legacy_status == "queued":
+        legacy_status = "running"
+
+    p = info.progress
+    cfg = info.config
+    progress = UniversalScraperProgress(
+        characters=CategoryProgress(
+            enabled=cfg.crawl_characters, total=0, completed=p.characters_completed, failed=0, max_limit=cfg.max_chars
+        ),
+        episodes=CategoryProgress(
+            enabled=cfg.crawl_episodes, total=0, completed=p.episodes_completed, failed=0, max_limit=cfg.max_episodes
+        ),
+        galleries=CategoryProgress(
+            enabled=cfg.crawl_galleries, total=0, completed=p.galleries_completed, failed=0, max_limit=cfg.max_gallery_images
+        ),
+        chapters=CategoryProgress(
+            enabled=cfg.crawl_chapters, total=0, completed=p.chapters_completed, failed=0, max_limit=cfg.max_chapters
+        ),
+        overall_completed=p.overall_completed,
+        overall_total=p.overall_total,
+        speed=p.speed,
+        eta=p.eta,
+    )
+
     return UniversalScraperStatus(
-        status=universal_scraper_state.status,
-        started_at=universal_scraper_state.started_at,
-        anime_name=universal_scraper_state.anime_name,
-        wiki_url=universal_scraper_state.wiki_url,
-        progress=universal_scraper_state.progress,
-        error=universal_scraper_state.error
+        status=legacy_status,
+        started_at=info.started_at,
+        anime_name=None,
+        wiki_url=cfg.input_source if cfg.input_type == "url" else None,
+        progress=progress,
+        error=info.error,
     )
 
 
 @router.post("/stop-universal")
 async def stop_universal_scraper(current_user: dict = Depends(get_current_user)):
     """Stop the running Universal Scraper."""
-    if universal_scraper_state.status not in ("running", "paused"):
-        raise HTTPException(status_code=400, detail="Universal scraper is not running")
+    if not JOBS_AVAILABLE:
+        if universal_scraper_state.status not in ("running", "paused"):
+            raise HTTPException(status_code=400, detail="Universal scraper is not running")
 
-    universal_scraper_state.status = "stopped"
-    universal_scraper_state.add_log("info", "Universal scraper stopped by user")
+        universal_scraper_state.status = "stopped"
+        universal_scraper_state.add_log("info", "Universal scraper stopped by user")
 
-    # Terminate subprocess if running
-    if universal_scraper_state._process:
-        try:
-            universal_scraper_state._process.terminate()
-            universal_scraper_state._process.wait(timeout=5)
-        except:
-            universal_scraper_state._process.kill()
+        if universal_scraper_state._process:
+            try:
+                universal_scraper_state._process.terminate()
+                universal_scraper_state._process.wait(timeout=5)
+            except Exception:
+                try:
+                    universal_scraper_state._process.kill()
+                except Exception:
+                    pass
 
-    if universal_scraper_state._task and not universal_scraper_state._task.done():
-        universal_scraper_state._task.cancel()
+        if universal_scraper_state._task and not universal_scraper_state._task.done():
+            universal_scraper_state._task.cancel()
 
-    return {"status": "stopped", "message": "Universal scraper stopped"}
+        return {"status": "stopped", "message": "Universal scraper stopped"}
+
+    job_id = _get_current_job()
+    if not job_id:
+        raise HTTPException(status_code=400, detail="No active job")
+    request_stop(job_id)
+    return {"status": "stopping", "job_id": job_id}
 
 
 @router.post("/pause-universal")
 async def pause_universal_scraper(current_user: dict = Depends(get_current_user)):
     """Pause the running Universal Scraper."""
-    if universal_scraper_state.status != "running":
-        raise HTTPException(status_code=400, detail="Universal scraper is not running")
+    if not JOBS_AVAILABLE:
+        if universal_scraper_state.status != "running":
+            raise HTTPException(status_code=400, detail="Universal scraper is not running")
 
-    universal_scraper_state.status = "paused"
-    universal_scraper_state.add_log("info", "Universal scraper paused")
+        universal_scraper_state.status = "paused"
+        universal_scraper_state.add_log("info", "Universal scraper paused")
+        return {"status": "paused", "message": "Universal scraper paused"}
 
-    return {"status": "paused", "message": "Universal scraper paused"}
+    job_id = _get_current_job()
+    if not job_id:
+        raise HTTPException(status_code=400, detail="No active job")
+    request_pause(job_id, True)
+    return {"status": "paused", "job_id": job_id}
 
 
 @router.post("/resume-universal")
 async def resume_universal_scraper(current_user: dict = Depends(get_current_user)):
     """Resume the paused Universal Scraper."""
-    if universal_scraper_state.status != "paused":
-        raise HTTPException(status_code=400, detail="Universal scraper is not paused")
+    if not JOBS_AVAILABLE:
+        if universal_scraper_state.status != "paused":
+            raise HTTPException(status_code=400, detail="Universal scraper is not paused")
 
-    universal_scraper_state.status = "running"
-    universal_scraper_state.add_log("info", "Universal scraper resumed")
+        universal_scraper_state.status = "running"
+        universal_scraper_state.add_log("info", "Universal scraper resumed")
+        return {"status": "running", "message": "Universal scraper resumed"}
 
-    return {"status": "running", "message": "Universal scraper resumed"}
+    job_id = _get_current_job()
+    if not job_id:
+        raise HTTPException(status_code=400, detail="No active job")
+    request_pause(job_id, False)
+    return {"status": "running", "job_id": job_id}
 
 
 @router.get("/universal-logs", response_model=list[ScraperLog])
@@ -939,16 +1337,22 @@ async def get_universal_logs(
     level: Optional[str] = None
 ):
     """Get Universal Scraper logs."""
-    logs = universal_scraper_state.logs
+    if not JOBS_AVAILABLE:
+        logs = universal_scraper_state.logs
+        if level and level != "all":
+            logs = [
+                log for log in logs
+                if (log.get("level") if isinstance(log, dict) else log.level) == level
+            ]
+        return logs[-limit:]
 
-    if level and level != "all":
-        # Handle both dict and object access for logs
-        logs = [
-            log for log in logs
-            if (log.get("level") if isinstance(log, dict) else log.level) == level
-        ]
+    job_id = _get_current_job()
+    if not job_id:
+        return []
 
-    return logs[-limit:]
+    lines = get_logs(job_id, limit=limit)
+    now = datetime.now()
+    return [ScraperLog(timestamp=now, level="info", message=line) for line in lines]
 
 
 async def run_universal_scraper(config: UniversalScraperConfig):

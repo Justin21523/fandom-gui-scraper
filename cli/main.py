@@ -18,6 +18,10 @@ from pathlib import Path
 from typing import Optional, List
 from enum import Enum
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import typer
 from rich.console import Console
 from rich.table import Table
