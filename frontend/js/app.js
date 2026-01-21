@@ -19,6 +19,8 @@ import { renderSettingsPage } from './pages/settings.js';
 import { renderChartsPage } from './pages/charts.js';
 import { renderMediaPage } from './pages/media.js';
 import { renderCharacterDetailPage } from './pages/characterDetail.js';
+import { renderJobsPage } from './pages/jobs.js';
+import { renderBrowsePage } from './pages/browse.js';
 
 // 容器元素
 let headerEl, sidebarEl, mainContentEl;
@@ -118,6 +120,8 @@ function setupRouter() {
             '/': 'Dashboard',
             '/characters': 'Characters',
             '/scraper': 'Scraper',
+            '/jobs': 'Jobs',
+            '/browse': 'Browse',
             '/charts': 'Charts',
             '/media': 'Media',
             '/settings': 'Settings',
@@ -147,6 +151,14 @@ function setupRouter() {
         '/scraper': {
             handler: (route) => renderScraperPage(mainContentEl, route),
             meta: { title: 'Scraper' }
+        },
+        '/jobs': {
+            handler: (route) => renderJobsPage(mainContentEl, route),
+            meta: { title: 'Jobs' }
+        },
+        '/browse': {
+            handler: (route) => renderBrowsePage(mainContentEl, route),
+            meta: { title: 'Browse' }
         },
         '/charts': {
             handler: (route) => renderChartsPage(mainContentEl, route),

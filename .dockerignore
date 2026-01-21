@@ -1,0 +1,14 @@
+.git
+.pytest_cache
+.scrapy
+__pycache__
+node_modules
+storage
+test_storage
+logs
+.cache
+frontend/libs
+frontend/assets
+*.zip
+*.gz
+*.jsonl

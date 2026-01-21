@@ -17,15 +17,8 @@ export async function login(username, password) {
     formData.append('username', username);
     formData.append('password', password);
 
-    const response = await api.post('/auth/token', null, {
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        data: null
-    });
-
-    // 使用原生 fetch 因為需要特殊的 Content-Type
-    const tokenResponse = await fetch('/api/v1/auth/token', {
+    // 使用原生 fetch 因為 OAuth2 需要 application/x-www-form-urlencoded
+    const tokenResponse = await fetch('http://localhost:8000/api/v1/auth/token', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -35,7 +28,8 @@ export async function login(username, password) {
 
     if (!tokenResponse.ok) {
         const error = await tokenResponse.json().catch(() => ({}));
-        throw new Error(error.detail || '登入失敗');
+        const errorMessage = error.detail || '登入失敗';
+        throw new Error(errorMessage);
     }
 
     const data = await tokenResponse.json();

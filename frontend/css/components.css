@@ -171,16 +171,18 @@
 }
 
 /* === Checkbox & Radio === */
-.checkbox-group,
-.radio-group {
+/* Single checkbox/radio item wrapper (label) */
+.checkbox-wrapper,
+.radio-wrapper {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     cursor: pointer;
 }
 
-.checkbox,
-.radio {
+/* Checkbox and radio input styles */
+input[type="checkbox"].checkbox,
+input[type="radio"].radio {
     width: 18px;
     height: 18px;
     border: 2px solid var(--border-color-dark);
@@ -188,34 +190,42 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     flex-shrink: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
-.checkbox {
+input[type="checkbox"].checkbox {
     border-radius: var(--radius-sm);
 }
 
-.radio {
+input[type="radio"].radio {
     border-radius: var(--radius-full);
 }
 
-.checkbox:checked,
-.radio:checked {
+input[type="checkbox"].checkbox:checked,
+input[type="radio"].radio:checked {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
 }
 
-.checkbox:checked {
+input[type="checkbox"].checkbox:checked {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
     background-size: 14px;
 }
 
-.radio:checked {
+input[type="radio"].radio:checked {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='5'%3E%3C/circle%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
     background-size: 10px;
+}
+
+.checkbox__label,
+.radio__label {
+    user-select: none;
 }
 
 /* === Badge === */
@@ -2293,22 +2303,22 @@
     color: var(--text-primary);
 }
 
-/* === Input Group === */
-.input-group {
+/* === Input Group (Horizontal - for search box with button) === */
+.input-group--horizontal {
     display: flex;
     gap: var(--spacing-sm);
 }
 
-.input-group .input {
+.input-group--horizontal .input {
     flex: 1;
 }
 
-.input-group .btn {
+.input-group--horizontal .btn {
     flex-shrink: 0;
 }
 
-/* === Checkbox Group === */
-.checkbox-group {
+/* === Checkbox Group (Vertical - for category selection) === */
+.checkbox-group--vertical {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);

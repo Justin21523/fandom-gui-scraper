@@ -9,14 +9,29 @@ including pipeline configurations, download settings, and middleware.
 import os
 from pathlib import Path
 
+# scrapy-playwright requires the asyncio-based Twisted reactor. Scrapy will
+# validate the installed reactor against `TWISTED_REACTOR`; if a different
+# reactor is imported first, all crawls fail. Installing here ensures this
+# module (loaded early by Scrapy) pins the correct reactor.
+try:  # pragma: no cover
+    from scrapy.utils.reactor import install_reactor
+
+    install_reactor("twisted.internet.asyncioreactor.AsyncioSelectorReactor")
+except Exception:
+    # If a reactor is already installed in this process, Scrapy will error
+    # later if it mismatches. We still avoid crashing import-time here so
+    # non-scrapy tools can import settings.
+    pass
+
 
 # Scrapy Project Settings
 BOT_NAME = "fandom_scraper"
-SPIDER_MODULES = ["scraper.spiders"]
-NEWSPIDER_MODULE = "scraper.spiders"
+SPIDER_MODULES = ["scraper"]
+NEWSPIDER_MODULE = "scraper"
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+# Disabled temporarily to bypass Cloudflare bot detection
+ROBOTSTXT_OBEY = False
 
 # Configure User Agent
 USER_AGENT = "FandomScraper/1.0 (+https://github.com/user/fandom-scraper)"
@@ -52,6 +67,7 @@ TELNETCONSOLE_ENABLED = False
 # Database Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 MONGO_DATABASE = os.getenv("MONGO_DATABASE", "fandom_scraper")
+ENABLE_MONGO = os.getenv("ENABLE_MONGO", "false").lower() == "true"
 
 # Image Storage Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -96,11 +112,13 @@ ITEM_PIPELINES = {
     "scraper.pipelines.ImageDownloadPipeline": 300,
     # Quality assessment
     "scraper.pipelines.DataQualityPipeline": 400,
-    # Database storage
-    "scraper.pipelines.DataStoragePipeline": 500,
     # File export (JSON alongside MongoDB)
     "scraper.pipelines.FileExportPipeline": 600,
 }
+
+# Optional MongoDB storage (off by default in Docker)
+if ENABLE_MONGO:
+    ITEM_PIPELINES["scraper.pipelines.DataStoragePipeline"] = 500
 
 # Configure Middlewares
 DOWNLOADER_MIDDLEWARES = {
@@ -113,21 +131,45 @@ DOWNLOADER_MIDDLEWARES = {
     "scrapy.downloadermiddlewares.httpcache.HttpCacheMiddleware": 900,
 }
 
+# Playwright settings for JavaScript rendering (bypass Cloudflare)
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+
+PLAYWRIGHT_BROWSER_TYPE = "chromium"
+PLAYWRIGHT_LAUNCH_OPTIONS = {
+    "headless": True,
+    "timeout": 30000,  # 30 seconds
+}
+
+# Optional per-job cache directory for Chromium (useful in Docker)
+_pw_cache_dir = os.getenv("PLAYWRIGHT_CACHE_DIR")
+if _pw_cache_dir:
+    PLAYWRIGHT_LAUNCH_OPTIONS.setdefault("args", [])
+    if isinstance(PLAYWRIGHT_LAUNCH_OPTIONS["args"], list):
+        PLAYWRIGHT_LAUNCH_OPTIONS["args"].append(f"--disk-cache-dir={_pw_cache_dir}")
+
+# Default Playwright context options (apply to all requests)
+PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000  # 30 seconds
+
 # HTTP Cache settings (useful for development)
-HTTPCACHE_ENABLED = False  # Set to True for development
+HTTPCACHE_ENABLED = os.getenv("HTTPCACHE_ENABLED", "false").lower() == "true"
 HTTPCACHE_EXPIRATION_SECS = 3600  # 1 hour
-HTTPCACHE_DIR = str(PROJECT_ROOT / ".scrapy" / "httpcache")
+HTTPCACHE_DIR = os.getenv("HTTPCACHE_DIR", str(PROJECT_ROOT / ".scrapy" / "httpcache"))
 HTTPCACHE_IGNORE_HTTP_CODES = [503, 504, 505, 500, 403, 404, 408, 429]
 HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
 
 # Logging Configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_FILE = str(PROJECT_ROOT / "logs" / "scrapy.log")
+# 不設定 LOG_FILE，讓日誌輸出到 stdout（終端）
+# LOG_FILE = str(PROJECT_ROOT / "logs" / "scrapy.log")
 LOG_ENCODING = "utf-8"
 LOG_STDOUT = True
+LOG_ENABLED = True
 
 # Custom logging format
-LOG_FORMAT = "%(levelname)s: %(message)s"
+LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 LOG_DATEFORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Memory usage monitoring
@@ -174,8 +216,8 @@ MEDIA_ALLOW_REDIRECTS = True
 class DevelopmentSettings:
     """Development environment settings."""
 
-    # Enable debugging features
-    HTTPCACHE_ENABLED = True
+    # Disable HTTP cache to prevent stale responses
+    HTTPCACHE_ENABLED = False
     LOG_LEVEL = "DEBUG"
     AUTOTHROTTLE_DEBUG = True
     COOKIES_DEBUG = True
@@ -380,13 +422,14 @@ DUPEFILTER_DEBUG = False
 # Scheduler settings
 SCHEDULER_PRIORITY_QUEUE = "scrapy.pqueues.ScrapyPriorityQueue"
 
-# Item processor settings
-ITEM_PROCESSOR = "itemproc.ItemProcessor"
+# Item processor settings (使用 Scrapy 默認)
+# ITEM_PROCESSOR = "itemproc.ItemProcessor"
 
 # Reactor settings
 REACTOR_THREADPOOL_MAXSIZE = 20
 
 # Twisted settings
+# Use Asyncio reactor for Playwright compatibility
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 # SSL/TLS settings

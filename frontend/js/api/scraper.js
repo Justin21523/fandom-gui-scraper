@@ -203,6 +203,46 @@ export async function getUniversalLogs(options = {}) {
     return api.get('/scraper/universal-logs', { limit, level });
 }
 
+// ========================================
+// JOBS API (new)
+// ========================================
+
+export async function listUniversalJobs(limit = 20) {
+    return api.get('/scraper/jobs', { limit });
+}
+
+export async function selectUniversalJob(jobId) {
+    return api.post(`/scraper/jobs/${encodeURIComponent(jobId)}/select`);
+}
+
+export async function getUniversalJobLogs(jobId, limit = 200) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/logs`, { limit });
+}
+
+export async function getUniversalJobOutputStats(jobId) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/output-stats`);
+}
+
+export async function listUniversalJobFiles(jobId, limit = 2000) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/files`, { limit });
+}
+
+export async function getUniversalJobManifest(jobId) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/manifest`);
+}
+
+export async function previewUniversalJobFile(jobId, path, limit = 200) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/file-preview`, { path, limit });
+}
+
+export async function cleanupUniversalJobs() {
+    return api.post('/scraper/jobs/cleanup');
+}
+
+export async function deleteUniversalJob(jobId) {
+    return api.post(`/scraper/jobs/${encodeURIComponent(jobId)}/delete`);
+}
+
 export default {
     // Legacy scraper
     getPresets,
@@ -228,5 +268,14 @@ export default {
     stopUniversalScraper,
     pauseUniversalScraper,
     resumeUniversalScraper,
-    getUniversalLogs
+    getUniversalLogs,
+    listUniversalJobs,
+    selectUniversalJob,
+    getUniversalJobLogs,
+    getUniversalJobOutputStats,
+    listUniversalJobFiles,
+    getUniversalJobManifest,
+    previewUniversalJobFile,
+    cleanupUniversalJobs,
+    deleteUniversalJob
 };

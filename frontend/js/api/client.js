@@ -7,7 +7,7 @@ import { getToken, logout, updateToken } from '../stores/authStore.js';
 
 // API 基礎設定
 const DEFAULT_CONFIG = {
-    baseURL: '/api/v1',
+    baseURL: `${window.location.origin}/api/v1`,
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json'
@@ -57,7 +57,22 @@ export class APIClient {
      * @private
      */
     _buildURL(path, params = {}) {
-        const url = new URL(path, window.location.origin + this.config.baseURL + '/');
+        // 處理 baseURL：如果是完整 URL 就直接使用，否則加上當前 origin
+        let baseURL = this.config.baseURL;
+        if (!baseURL.startsWith('http://') && !baseURL.startsWith('https://')) {
+            baseURL = window.location.origin + baseURL;
+        }
+
+        // 確保 baseURL 以 / 結尾
+        if (!baseURL.endsWith('/')) {
+            baseURL += '/';
+        }
+
+        // 移除 path 開頭的 /
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+        // 建立完整 URL
+        const url = new URL(cleanPath, baseURL);
 
         // 處理查詢參數
         Object.entries(params).forEach(([key, value]) => {

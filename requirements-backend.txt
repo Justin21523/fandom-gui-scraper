@@ -1,0 +1,38 @@
+# Backend + scraping runtime dependencies for Docker
+# (keeps GUI/ML-heavy deps out of containers)
+
+scrapy==2.13.4
+requests>=2.31.0
+lxml>=4.9.3
+beautifulsoup4>=4.12.2
+
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+email-validator>=2.0.0
+
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+
+fastapi>=0.103.0
+uvicorn>=0.23.0
+python-multipart>=0.0.9
+
+redis>=4.6.0
+rq>=1.16.2
+
+scrapy-user-agents>=0.1.1
+scrapy-playwright>=0.0.34
+playwright>=1.42.0
+
+rich>=13.5.0
+typer>=0.9.0
+
+pymongo>=4.5.0
+motor>=3.3.0
+
+Pillow>=10.0.0
+
+# Auth (used even when AUTH_DISABLED=true due to imports)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.2

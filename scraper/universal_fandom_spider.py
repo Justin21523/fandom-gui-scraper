@@ -22,9 +22,10 @@ Features:
 import os
 import re
 import yaml
+import json
 from typing import List, Dict, Any, Optional, Literal
 from pathlib import Path
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, urlencode, quote
 
 import scrapy
 from scrapy.http import Response, Request
@@ -188,10 +189,21 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
     name = "universal_fandom"
 
+    @staticmethod
+    def _to_bool(value) -> bool:
+        """Convert string/bool value to boolean."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.lower() in ('true', '1', 'yes', 'y')
+        return bool(value)
+
     def __init__(
         self,
         input_source: str,
         input_type: Literal["url", "name"] = "name",
+        use_playwright: bool = False,
+        use_playwright_detail_pages: bool = False,
         crawl_characters: bool = True,
         crawl_episodes: bool = True,
         crawl_galleries: bool = True,
@@ -222,6 +234,18 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         # The spider.logger will be automatically available from Scrapy
         # If custom logger needed, access via get_logger() in methods
 
+        # Convert string parameters to correct types (from command line args)
+        use_playwright = self._to_bool(use_playwright)
+        use_playwright_detail_pages = self._to_bool(use_playwright_detail_pages)
+        crawl_characters = self._to_bool(crawl_characters)
+        crawl_episodes = self._to_bool(crawl_episodes)
+        crawl_galleries = self._to_bool(crawl_galleries)
+        crawl_chapters = self._to_bool(crawl_chapters)
+        max_chars = int(max_chars) if max_chars is not None else 100
+        max_episodes = int(max_episodes) if max_episodes is not None else 50
+        max_gallery_images = int(max_gallery_images) if max_gallery_images is not None else 200
+        max_chapters = int(max_chapters) if max_chapters is not None else 50
+
         # Discover wiki URL if input is name
         if input_type == "name":
             self.wiki_url = self._discover_wiki_url(input_source)
@@ -233,6 +257,9 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         # Extract anime name and domain from URL
         self.anime_name = self._extract_anime_name_from_url(self.wiki_url)
         self.wiki_domain = self._extract_domain_from_url(self.wiki_url)
+        self.use_playwright = use_playwright
+        self.use_playwright_detail_pages = use_playwright_detail_pages
+        self._character_parser = None
 
         # Set up crawl configuration
         self.crawl_config = {
@@ -264,14 +291,42 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
         # Initialize page type detector
         self.page_detector = PageTypeDetector()
+        self.max_category_depth = 3
+        try:
+            config_path = Path(__file__).parent.parent / 'config' / 'universal_scraper.yaml'
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    cfg = yaml.safe_load(f) or {}
+                self.max_category_depth = int((cfg.get('limits') or {}).get('max_depth', 3))
+        except Exception:
+            self.max_category_depth = 3
 
         # Initialize base spider
         super().__init__(anime_name=self.anime_name, **kwargs)
 
         # Update settings for universal spider
-        self.custom_settings.update({
-            'IMAGES_STORE': str(Path(f'/mnt/data/datasets/fandom/{self.anime_name}/images')),
-        })
+        data_root = Path(os.getenv("FANDOM_DATA_ROOT", "/mnt/data/datasets/fandom"))
+        self.custom_settings.update(
+            {
+                "IMAGES_STORE": str(data_root / "images"),
+            }
+        )
+
+    def _with_playwright_detail_meta(self, meta: dict) -> dict:
+        if not self.use_playwright_detail_pages:
+            return meta
+        merged = dict(meta)
+        merged.update(
+            {
+                "playwright": True,
+                "playwright_include_page": False,
+                "playwright_page_goto_kwargs": {
+                    "wait_until": "domcontentloaded",
+                    "timeout": 60000,
+                },
+            }
+        )
+        return merged
 
     def _discover_wiki_url(self, anime_name: str) -> Optional[str]:
         """
@@ -373,35 +428,192 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         Yields:
             Initial category page requests
         """
-        self.logger.info(f"Starting universal spider for: {self.anime_name}")
+        self.logger.info(f"=" * 80)
+        self.logger.info(f"Starting Universal Fandom Spider")
+        self.logger.info(f"=" * 80)
+        self.logger.info(f"Anime: {self.anime_name}")
         self.logger.info(f"Wiki URL: {self.wiki_url}")
         self.logger.info(f"Crawl config: {self._get_config_summary()}")
+        self.logger.info(f"=" * 80)
 
         # Generate requests for each enabled category
         for category, config in self.crawl_config.items():
             if not config['enabled']:
+                self.logger.info(f"Skipping {category} (disabled)")
                 continue
 
-            self.logger.info(
-                f"Enabling {category} crawl "
-                f"(max: {config['max'] if config['max'] > 0 else 'unlimited'})"
-            )
+            self.logger.info(f"")
+            self.logger.info(f"Enabling {category} crawl:")
+            self.logger.info(f"  Max items: {config['max'] if config['max'] > 0 else 'unlimited'}")
+            self.logger.info(f"  Trying {len(config['category_pages'])} category page variants...")
 
             # Try each category page variant
-            for category_page in config['category_pages']:
+            for idx, category_page in enumerate(config['category_pages'], 1):
+                # Prefer MediaWiki API for Category:* pages (faster + more consistent than HTML parsing).
+                if category_page.startswith('Category:'):
+                    api_url = self._build_categorymembers_api_url(category_page)
+                    self.logger.info(
+                        f"  [{idx}/{len(config['category_pages'])}] Requesting (API): {category_page} -> {api_url}"
+                    )
+                    yield Request(
+                        url=api_url,
+                        callback=self.parse_category_api,
+                        errback=self.handle_error,
+                        meta={
+                            'category': category,
+                            'anime_name': self.anime_name,
+                            'category_title': category_page,
+                            'category_depth': 0,
+                        },
+                        dont_filter=True,
+                    )
+                    continue
+
                 url = f"{self.wiki_url}/wiki/{category_page}"
+                self.logger.info(f"  [{idx}/{len(config['category_pages'])}] Requesting: {url}")
+
+                meta = {
+                    'category': category,
+                    'anime_name': self.anime_name,
+                    'dont_redirect': False,
+                }
+
+                # Default: use regular Scrapy downloader (faster and avoids Playwright timeouts).
+                # If a site is blocked (e.g., Cloudflare/403) we can retry with Playwright later.
+                if self.use_playwright:
+                    from scrapy_playwright.page import PageMethod
+                    meta.update({
+                        'playwright': True,
+                        'playwright_include_page': False,
+                        'playwright_page_goto_kwargs': {
+                            'wait_until': 'domcontentloaded',
+                            'timeout': 60000,
+                        },
+                        'playwright_page_methods': [
+                            PageMethod(
+                                'wait_for_selector',
+                                '.category-page__member, .category-page__members, #mw-pages, .mw-category, .mw-category-group',
+                                timeout=15000,
+                            ),
+                            PageMethod('wait_for_timeout', 500),
+                        ],
+                    })
 
                 yield Request(
                     url=url,
                     callback=self.parse_category_page,
                     errback=self.handle_error,
+                    meta=meta,
+                    dont_filter=True  # Allow revisiting category pages
+                )
+
+    def _build_categorymembers_api_url(self, category_title: str, cmcontinue: Optional[str] = None) -> str:
+        """Build MediaWiki categorymembers API URL for this wiki."""
+        params = {
+            'action': 'query',
+            'list': 'categorymembers',
+            'cmtitle': category_title,
+            'cmlimit': 500,
+            'cmnamespace': '0|14',  # pages + subcategories
+            'format': 'json',
+        }
+        if cmcontinue:
+            params['cmcontinue'] = cmcontinue
+        return f"{self.wiki_url}/api.php?{urlencode(params)}"
+
+    def _build_wiki_page_url(self, title: str) -> str:
+        """Build a canonical /wiki/ URL for a given page title."""
+        normalized = title.replace(' ', '_')
+        return f"{self.wiki_url}/wiki/{quote(normalized, safe='()!$,:;@/._-')}"
+
+    def parse_category_api(self, response: Response):
+        """
+        Parse category members via MediaWiki API (preferred for Category:* sources).
+
+        Yields:
+            Requests for pages/subcategories discovered in this category.
+        """
+        category = response.meta.get('category', 'characters')
+        config = self.crawl_config[category]
+        category_title = response.meta.get('category_title')
+        category_depth = int(response.meta.get('category_depth', 0) or 0)
+
+        self.logger.info(f"=== Parsing category API: {category_title} (depth {category_depth}/{self.max_category_depth}) ===")
+
+        try:
+            payload = json.loads(response.text)
+        except Exception as e:
+            self.logger.error(f"Failed to parse category API JSON for {response.url}: {e}")
+            return
+
+        members = (((payload.get('query') or {}).get('categorymembers')) or [])
+        self.logger.info(f"Category API returned {len(members)} members")
+
+        # Handle pagination
+        cont = payload.get('continue') or {}
+        cmcontinue = cont.get('cmcontinue')
+
+        # Queue members
+        for member in members:
+            if config['max'] > 0 and config['count'] >= config['max']:
+                break
+
+            ns = member.get('ns')
+            title = member.get('title') or ''
+            if not title:
+                continue
+
+            # Subcategory recursion
+            if ns == 14 and category_depth < self.max_category_depth:
+                subcat_title = title if title.startswith('Category:') else f"Category:{title}"
+                yield Request(
+                    url=self._build_categorymembers_api_url(subcat_title),
+                    callback=self.parse_category_api,
+                    errback=self.handle_error,
                     meta={
                         'category': category,
                         'anime_name': self.anime_name,
-                        'dont_redirect': False,
+                        'category_title': subcat_title,
+                        'category_depth': category_depth + 1,
                     },
-                    dont_filter=True  # Allow revisiting category pages
                 )
+                continue
+
+            # Normal pages
+            if ns != 0:
+                continue
+
+            page_url = self._build_wiki_page_url(title)
+            page_type = self.page_detector.detect(page_url)
+            expected_type = category.rstrip('s')
+            if page_type != expected_type:
+                continue
+
+            config['count'] += 1
+            callback = self._get_callback_for_type(page_type)
+            self.logger.info(f"[{category}] Queueing {page_type}: {page_url}")
+            yield Request(
+                url=page_url,
+                callback=callback,
+                errback=self.handle_error,
+                meta=self._with_playwright_detail_meta(
+                    {
+                        'category': category,
+                        'page_type': page_type,
+                        'anime_name': self.anime_name,
+                    }
+                ),
+            )
+
+        # Continue paging if needed and we still want more
+        if cmcontinue and (config['max'] == 0 or config['count'] < config['max']):
+            yield Request(
+                url=self._build_categorymembers_api_url(category_title, cmcontinue=cmcontinue),
+                callback=self.parse_category_api,
+                errback=self.handle_error,
+                meta=dict(response.meta),
+                dont_filter=True,
+            )
 
     def _get_config_summary(self) -> str:
         """Get human-readable crawl config summary."""
@@ -421,31 +633,160 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         category = response.meta.get('category', 'characters')
         config = self.crawl_config[category]
 
-        self.logger.info(f"Parsing category page: {response.url} ({category})")
+        self.logger.info(f"=== Parsing category page: {response.url} ===")
+        self.logger.info(f"Category: {category}")
+        self.logger.info(f"Current count: {config['count']}/{config['max']}")
+        self.logger.info(f"Response status: {response.status}")
+        self.logger.info(f"Response size: {len(response.body)} bytes")
+
+        # If this looks like a block page or the HTML is incomplete, retry once with Playwright.
+        if not response.meta.get('playwright') and not response.meta.get('playwright_retry'):
+            body_lower = response.text.lower() if hasattr(response, 'text') else ''
+            blocked_markers = ['cloudflare', 'cf-browser-verification', 'attention required', 'captcha']
+            if response.status in (403, 429) or any(m in body_lower for m in blocked_markers):
+                from scrapy_playwright.page import PageMethod
+                retry_meta = dict(response.meta)
+                retry_meta.update({
+                    'playwright': True,
+                    'playwright_retry': True,
+                    'playwright_include_page': False,
+                    'playwright_page_goto_kwargs': {
+                        'wait_until': 'domcontentloaded',
+                        'timeout': 60000,
+                    },
+                    'playwright_page_methods': [
+                        PageMethod(
+                            'wait_for_selector',
+                            '.category-page__member, .category-page__members, #mw-pages, .mw-category, .mw-category-group',
+                            timeout=15000,
+                        ),
+                        PageMethod('wait_for_timeout', 500),
+                    ],
+                })
+                self.logger.warning(f"Retrying with Playwright due to suspected blocking: {response.url}")
+                yield Request(
+                    url=response.url,
+                    callback=self.parse_category_page,
+                    errback=self.handle_error,
+                    meta=retry_meta,
+                    dont_filter=True,
+                )
+                return
 
         # Extract page links from category
         # Fandom uses different structures for category pages
         page_links = []
+        link_sources = {}  # Track where each link came from for debugging
 
         # Strategy 1: Category members (.category-page__member)
-        page_links.extend(
-            response.css('.category-page__member a::attr(href)').getall()
-        )
+        strategy1_links = response.css('.category-page__member a::attr(href)').getall()
+        for link in strategy1_links:
+            page_links.append(link)
+            link_sources[link] = 'category-page__member'
+        self.logger.info(f"Strategy 1 (category-page__member): found {len(strategy1_links)} links")
 
-        # Strategy 2: Standard wiki links in content
-        page_links.extend(
-            response.css('#mw-pages a::attr(href)').getall()
-        )
+        # Strategy 2: Standard MediaWiki category pages (#mw-pages)
+        strategy2_links = response.css('#mw-pages a::attr(href)').getall()
+        for link in strategy2_links:
+            if link not in page_links:
+                page_links.append(link)
+                link_sources[link] = 'mw-pages'
+        self.logger.info(f"Strategy 2 (mw-pages): found {len(strategy2_links)} links")
 
         # Strategy 3: Gallery grid
-        page_links.extend(
-            response.css('.wikia-gallery-item a::attr(href)').getall()
-        )
+        strategy3_links = response.css('.wikia-gallery-item a::attr(href)').getall()
+        for link in strategy3_links:
+            if link not in page_links:
+                page_links.append(link)
+                link_sources[link] = 'wikia-gallery-item'
+        self.logger.info(f"Strategy 3 (wikia-gallery-item): found {len(strategy3_links)} links")
+
+        # Strategy 4: Category page listings (newer Fandom layout)
+        strategy4_links = response.css('.category-page__members a::attr(href)').getall()
+        for link in strategy4_links:
+            if link not in page_links:
+                page_links.append(link)
+                link_sources[link] = 'category-page__members'
+        self.logger.info(f"Strategy 4 (category-page__members): found {len(strategy4_links)} links")
+
+        # Strategy 5: mw-category-group (standard MediaWiki)
+        strategy5_links = response.css('.mw-category-group a::attr(href)').getall()
+        for link in strategy5_links:
+            if link not in page_links:
+                page_links.append(link)
+                link_sources[link] = 'mw-category-group'
+        self.logger.info(f"Strategy 5 (mw-category-group): found {len(strategy5_links)} links")
+
+        # Strategy 6: Any link in main content that looks like a wiki article
+        strategy6_links = response.css('.mw-content-text a[href*="/wiki/"]::attr(href)').getall()
+        for link in strategy6_links:
+            if link not in page_links and '/wiki/Category:' not in link and '/wiki/Special:' not in link:
+                page_links.append(link)
+                link_sources[link] = 'mw-content-text'
+        self.logger.info(f"Strategy 6 (mw-content-text): found {len(strategy6_links)} new links")
 
         # Make URLs absolute
         page_links = [urljoin(response.url, link) for link in page_links]
 
+        self.logger.info(f"Total unique links found: {len(page_links)}")
+
+        # If this category page only lists subcategories, recurse into them (common on many Fandom wikis).
+        category_depth = int(response.meta.get('category_depth', 0) or 0)
+        subcategory_links = [l for l in page_links if '/wiki/Category:' in l]
+        if subcategory_links and category_depth < self.max_category_depth:
+            queued = 0
+            for subcat_url in subcategory_links:
+                # Don't keep Playwright meta for subcategory traversal unless explicitly enabled
+                next_meta = dict(response.meta)
+                next_meta.pop('playwright', None)
+                next_meta.pop('playwright_page_methods', None)
+                next_meta.pop('playwright_page_goto_kwargs', None)
+                next_meta['category_depth'] = category_depth + 1
+                yield Request(
+                    url=subcat_url,
+                    callback=self.parse_category_page,
+                    errback=self.handle_error,
+                    meta=next_meta,
+                )
+                queued += 1
+            self.logger.info(
+                f"Queued {queued} subcategories for traversal (depth {category_depth + 1}/{self.max_category_depth})"
+            )
+
+        # If we got a 200 but found no links, retry once with Playwright (some wikis lazy-load lists).
+        if len(page_links) == 0 and not response.meta.get('playwright') and not response.meta.get('playwright_retry'):
+            from scrapy_playwright.page import PageMethod
+            retry_meta = dict(response.meta)
+            retry_meta.update({
+                'playwright': True,
+                'playwright_retry': True,
+                'playwright_include_page': False,
+                'playwright_page_goto_kwargs': {
+                    'wait_until': 'domcontentloaded',
+                    'timeout': 60000,
+                },
+                'playwright_page_methods': [
+                    PageMethod(
+                        'wait_for_selector',
+                        '.category-page__member, .category-page__members, #mw-pages, .mw-category, .mw-category-group',
+                        timeout=15000,
+                    ),
+                    PageMethod('wait_for_timeout', 500),
+                ],
+            })
+            self.logger.warning(f"No links found; retrying category page with Playwright: {response.url}")
+            yield Request(
+                url=response.url,
+                callback=self.parse_category_page,
+                errback=self.handle_error,
+                meta=retry_meta,
+                dont_filter=True,
+            )
+            return
+
         # Filter and yield requests
+        processed_count = 0
+        skipped_count = 0
         for link in page_links:
             # Check if we've hit the limit for this category
             if config['max'] > 0 and config['count'] >= config['max']:
@@ -454,42 +795,110 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
             # Skip non-wiki pages
             if '/wiki/' not in link:
+                skipped_count += 1
+                continue
+
+            # Skip special pages, file pages, category pages
+            if any(x in link for x in ['/wiki/Special:', '/wiki/File:', '/wiki/Category:',
+                                        '/wiki/Template:', '/wiki/Help:', '/wiki/MediaWiki:']):
+                skipped_count += 1
                 continue
 
             # Detect page type
             page_type = self.page_detector.detect(link)
 
+            # Log detection for first few links
+            if processed_count < 5:
+                self.logger.debug(f"Link: {link}")
+                self.logger.debug(f"  Detected type: {page_type}")
+                self.logger.debug(f"  Expected type: {category.rstrip('s')}")
+
             # Only process if page type matches category
-            if page_type != category.rstrip('s'):  # 'characters' -> 'character'
+            expected_type = category.rstrip('s')  # 'characters' -> 'character'
+            if page_type != expected_type:
+                skipped_count += 1
                 continue
 
             # Increment counter
             config['count'] += 1
+            processed_count += 1
 
             # Yield request with appropriate callback
             callback = self._get_callback_for_type(page_type)
+
+            self.logger.info(f"[{category}] Queueing {page_type}: {link}")
 
             yield Request(
                 url=link,
                 callback=callback,
                 errback=self.handle_error,
-                meta={
-                    'category': category,
-                    'page_type': page_type,
-                    'anime_name': self.anime_name,
-                }
+                meta=self._with_playwright_detail_meta(
+                    {
+                        'category': category,
+                        'page_type': page_type,
+                        'anime_name': self.anime_name,
+                    }
+                ),
             )
 
+        self.logger.info(f"=== Category page processed: {processed_count} items queued, {skipped_count} skipped ===")
+
         # Handle pagination (next page link)
+        # Try multiple selectors for pagination
+        next_page = None
+
+        # Strategy 1: Standard category pagination
         next_page = response.css('.category-page__pagination-next::attr(href)').get()
+
+        # Strategy 2: MediaWiki pagination
+        if not next_page:
+            next_page = response.css('#mw-pages a:contains("next")::attr(href)').get()
+
+        # Strategy 3: Look for "next" or ">" links
+        if not next_page:
+            next_page = response.css('a:contains("next page")::attr(href), a:contains("Next")::attr(href)').get()
+
         if next_page:
             next_url = urljoin(response.url, next_page)
+            self.logger.info(f"Following pagination: {next_url}")
             yield Request(
                 url=next_url,
                 callback=self.parse_category_page,
                 meta=response.meta,
                 dont_filter=True
             )
+
+    def handle_error(self, failure):
+        """
+        Enhanced error handler with detailed logging.
+
+        Args:
+            failure: Twisted Failure object
+        """
+        request = failure.request
+        category = request.meta.get('category', 'unknown')
+
+        self.logger.error(f"=" * 80)
+        self.logger.error(f"ERROR processing request:")
+        self.logger.error(f"  URL: {request.url}")
+        self.logger.error(f"  Category: {category}")
+        self.logger.error(f"  Error type: {failure.type.__name__}")
+        self.logger.error(f"  Error message: {failure.value}")
+        self.logger.error(f"=" * 80)
+
+        # Check if it's a 404 (category page doesn't exist)
+        if '404' in str(failure.value) or 'NotFound' in str(failure.type.__name__):
+            self.logger.warning(f"Category page not found (404): {request.url}")
+            self.logger.warning(f"This variant may not exist for this wiki. Trying next variant...")
+        elif '403' in str(failure.value) or 'Forbidden' in str(failure.type.__name__):
+            self.logger.error(f"Access forbidden (403): {request.url}")
+            self.logger.error(f"The wiki may be blocking our crawler")
+        elif 'robots.txt' in str(failure.value).lower():
+            self.logger.error(f"Blocked by robots.txt: {request.url}")
+            self.logger.error(f"Consider setting ROBOTSTXT_OBEY = False for testing")
+
+        # Call parent error handler
+        super().handle_error(failure)
 
     def _get_callback_for_type(self, page_type: str):
         """Get parsing callback for page type."""
@@ -507,17 +916,34 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
         Uses existing FandomSpider character parsing logic.
         """
-        # Delegate to existing character parsing from FandomSpider
-        from scraper.fandom_spider import FandomSpider
-
-        # Create temporary FandomSpider instance to use its methods
-        temp_spider = FandomSpider(anime_name=self.anime_name)
-
-        # Extract character data
-        item = temp_spider.parse_character_page(response)
-
-        if item:
+        # Delegate to existing character parsing from FandomSpider (produces fields
+        # expected by pipelines: name/anime_name/source_url/etc.).
+        parser = self._get_character_parser()
+        for item in parser.parse_character(response):
+            if isinstance(item, dict):
+                item.setdefault('content_type', 'character')
+                try:
+                    self.logger.info(
+                        "EVENT item_scraped "
+                        + json.dumps(
+                            {
+                                "content_type": "character",
+                                "name": item.get("name"),
+                                "source_url": item.get("source_url", response.url),
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+                except Exception:
+                    pass
             yield item
+
+    def _get_character_parser(self):
+        """Create/cache a lightweight parser using FandomSpider logic."""
+        if self._character_parser is None:
+            from scraper.fandom_spider import FandomSpider
+            self._character_parser = FandomSpider(anime_name=self.anime_name)
+        return self._character_parser
 
     def parse_episode(self, response: Response):
         """
@@ -554,7 +980,8 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
             'anime_name': self.anime_name,
             'source_url': response.url,
             'synopsis': synopsis_text,
-            'episode_type': 'tv_episode'
+            'episode_type': 'tv_episode',
+            'content_type': 'episode',
         }
 
         # Extract additional fields from infobox if available
@@ -571,6 +998,21 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
                 elif 'writer' in label_lower:
                     episode_data['writer'] = value
 
+        try:
+            self.logger.info(
+                "EVENT item_scraped "
+                + json.dumps(
+                    {
+                        "content_type": "episode",
+                        "title": episode_data.get("title"),
+                        "number": episode_data.get("number"),
+                        "source_url": response.url,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        except Exception:
+            pass
         yield episode_data
 
     def parse_gallery(self, response: Response):
@@ -596,13 +1038,29 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
             if img_url:
                 # Build gallery image item
-                yield {
+                item = {
                     'url': img_url,
                     'anime_name': self.anime_name,
                     'source_url': response.url,
                     'caption': caption,
                     'category': 'screenshot',  # Default category
+                    'content_type': 'gallery',
                 }
+                try:
+                    self.logger.info(
+                        "EVENT item_scraped "
+                        + json.dumps(
+                            {
+                                "content_type": "gallery",
+                                "url": item.get("url"),
+                                "source_url": response.url,
+                            },
+                            ensure_ascii=False,
+                        )
+                    )
+                except Exception:
+                    pass
+                yield item
 
     def parse_chapter(self, response: Response):
         """
@@ -628,13 +1086,31 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         synopsis = response.css('.mw-parser-output > p::text').getall()
         synopsis_text = ' '.join(synopsis).strip() if synopsis else None
 
-        yield {
+        item = {
             'title': title or 'Unknown Chapter',
             'number': chapter_num,
+            'anime_name': self.anime_name,
             'manga_name': self.anime_name,
             'source_url': response.url,
             'synopsis': synopsis_text,
+            'content_type': 'chapter',
         }
+        try:
+            self.logger.info(
+                "EVENT item_scraped "
+                + json.dumps(
+                    {
+                        "content_type": "chapter",
+                        "title": item.get("title"),
+                        "number": item.get("number"),
+                        "source_url": response.url,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        except Exception:
+            pass
+        yield item
 
     def closed(self, reason):
         """

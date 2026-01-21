@@ -16,7 +16,7 @@ from multiprocessing import Process, Queue, Event
 from scrapy.crawler import CrawlerProcess, CrawlerRunner
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
-from twisted.internet import reactor, defer
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 
 logger = logging.getLogger(__name__)
@@ -462,6 +462,10 @@ class SpiderManager:
             # For async mode, we need to run in reactor
             def run_async():
                 return multi_runner.run_spiders_async(spider_configs)
+
+            # Import reactor lazily to avoid installing the default reactor
+            # before Scrapy has a chance to configure `TWISTED_REACTOR`.
+            from twisted.internet import reactor
 
             if not reactor.running:
                 reactor.callWhenRunning(run_async)

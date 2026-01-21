@@ -1,15 +1,26 @@
-# 🎯 Fandom Scraper GUI Application
+# 🎯 Fandom Scraper (Web + Worker + Optional Desktop GUI)
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 [![Development Status](https://img.shields.io/badge/status-Feature%20Complete-brightgreen.svg)]()
 
-A comprehensive desktop application for scraping, managing, and exploring anime character data from Fandom wikis through an intuitive PyQt GUI interface powered by advanced web scraping technology.
+A job-based Fandom scraper with a web frontend connected to a backend API + worker (Scrapy + optional Playwright), plus an optional PyQt desktop GUI.
 
-![Application Demo](docs/images/screenshots/main_window_preview.png)
+![Web UI - Jobs](docs/images/screenshots/web_jobs.png)
 
 ## 🌟 Key Features
+
+### 🧰 **Job-based Scraping (Docker-first)**
+- **API + Worker separation**: API only does `create job / status / stop`, scraping runs in a separate worker to avoid UI/API process lockups
+- **Realtime events**: progress + logs streamed to the frontend (WebSocket)
+- **Fandom reliability**: prefers MediaWiki `api.php?action=query&list=categorymembers...` for category discovery; Playwright fallback when needed
+
+### 💾 **Storage / Space Governance**
+- **Centralized output root**: all outputs under `FANDOM_DATA_ROOT` (Docker volume by default)
+- **Images optional**: `DOWNLOAD_IMAGES=false` by default to reduce storage
+- **JSON output control**: `EXPORT_MODE=jsonl` + `EXPORT_JSON_GZIP=true` to reduce file count and size
+- **Retention + caps**: per-job TTL (`keep_job_days`), global cap (`JOBS_MAX_TOTAL_BYTES`), cache cap (`JOB_CACHE_MAX_BYTES`), log rotation (`JOB_LOG_MAX_BYTES`)
 
 ### 🕷️ **Intelligent Web Scraping**
 - **Multi-source Data Collection**: Automated extraction from multiple Fandom wiki sources
@@ -36,6 +47,67 @@ A comprehensive desktop application for scraping, managing, and exploring anime 
 - **Plugin System**: Extensible framework for custom scrapers
 
 ## 🚀 Quick Start
+
+## 🐳 Docker (Recommended)
+
+### Start
+
+```bash
+docker compose up -d --build
+```
+
+### Open
+
+- API health: `http://localhost:18000/health`
+- Web UI: `http://localhost:18000/frontend/`
+  - New Job: `#/scraper`
+  - Jobs: `#/jobs`
+  - Browse (manifest + JSONL preview): `#/browse`
+
+### Output Structure (per job)
+
+When running via the job queue, each job writes to:
+
+`$FANDOM_DATA_ROOT/jobs/<job_id>/`
+
+- `manifest.json`
+- `data/characters.jsonl.gz` (and `episodes/galleries/chapters` when enabled)
+- `logs/scrape.log` (rotated by size)
+
+Each exported record includes stable fields:
+
+- `schema_version`
+- `content_type`
+- `source` (always `fandom`)
+- `wiki_url`
+- `job_id`
+
+### MongoDB (optional)
+
+MongoDB is included in `docker-compose.yml` but **writing to MongoDB is off by default**.
+
+- Enable DB writes by setting `ENABLE_MONGO=true` in `docker-compose.yml` (both `api` and `worker`)
+- Mongo connection defaults:
+  - `MONGO_URI=mongodb://mongo:27017/`
+  - `MONGO_DATABASE=fandom_scraper`
+
+### Space Governance knobs
+
+These are set in `docker-compose.yml` and can be tuned:
+
+- `JOBS_MAX_TOTAL_BYTES` (global cap across job outputs; oldest jobs removed when exceeded)
+- `JOB_CACHE_MAX_BYTES` (per-job cache cap; deletes `cache/` when exceeded)
+- `JOB_LOG_MAX_BYTES` + `JOB_LOG_BACKUPS` (log rotation)
+- `keep_job_days` (per job retention; API param)
+
+### Screenshot capture (for docs)
+
+```bash
+docker run --rm --network host -v "$PWD:/app" -w /app fandom-gui-scraper-api \\
+  python scripts/capture_web_screenshots.py
+```
+
+## 🖥️ Desktop GUI (Optional / Legacy)
 
 ### Prerequisites
 
@@ -196,6 +268,12 @@ python main.py
 - [x] Naruto Fandom Wiki
 - [x] Dragon Ball Fandom Wiki
 - [x] Generic Fandom Wiki Support
+
+### Web UI Screenshots
+
+| New Job | Jobs | Browse |
+|---|---|---|
+| ![Web UI - New Job](docs/images/screenshots/web_scraper.png) | ![Web UI - Jobs](docs/images/screenshots/web_jobs.png) | ![Web UI - Browse](docs/images/screenshots/web_browse.png) |
 
 ### **Data Coverage**
 - Character profiles and relationships

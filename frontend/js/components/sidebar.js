@@ -33,6 +33,22 @@ const NAV_ITEMS = [
                 </svg>`,
                 labelKey: 'nav.scraper'
             }
+            ,
+            {
+                path: '/jobs',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 3a2 2 0 00-2 2v2a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4z"/>
+                    <path fill-rule="evenodd" d="M18 11H2v4a2 2 0 002 2h12a2 2 0 002-2v-4z" clip-rule="evenodd"/>
+                </svg>`,
+                labelKey: 'nav.jobs'
+            },
+            {
+                path: '/browse',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L14 2.586A2 2 0 0012.586 2H4zm8 1.5V7a1 1 0 001 1h2.5L12 4.5z" clip-rule="evenodd"/>
+                </svg>`,
+                labelKey: 'nav.browse'
+            }
         ]
     },
     {

@@ -10,8 +10,12 @@ import { createEventEmitter } from './helpers.js';
  */
 export class WebSocketManager {
     constructor(options = {}) {
+        const wsUrl = (() => {
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${proto}//${window.location.host}/api/v1/ws/updates`;
+        })();
         this.options = {
-            url: options.url || `ws://${window.location.host}/api/v1/ws`,
+            url: options.url || wsUrl,
             reconnectInterval: options.reconnectInterval || 3000,
             maxReconnectAttempts: options.maxReconnectAttempts || 10,
             heartbeatInterval: options.heartbeatInterval || 30000,
