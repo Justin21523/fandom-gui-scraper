@@ -1,8 +1,20 @@
-FROM nginx:1.27-alpine
+FROM mcr.microsoft.com/playwright/python:v1.49.1-jammy
 
-COPY docker/portfolio.nginx.conf /etc/nginx/conf.d/default.conf
-COPY portfolio-web /usr/share/nginx/html
+WORKDIR /app
 
-RUN chmod -R a+rX /usr/share/nginx/html
+COPY requirements-backend.txt /app/requirements-backend.txt
+RUN pip install --no-cache-dir -r /app/requirements-backend.txt
 
-EXPOSE 80
+COPY . /app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    AUTH_DISABLED=true \
+    FANDOM_DEMO_MODE=true \
+    FANDOM_DEMO_ROOT=/app/sample_data \
+    ENABLE_FILE_EXPORT=true \
+    DOWNLOAD_IMAGES=false
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
