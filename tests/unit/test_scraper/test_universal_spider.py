@@ -277,6 +277,18 @@ class TestUniversalFandomSpiderInitialization:
         assert spider.crawl_config['galleries']['enabled'] is True
         assert spider.crawl_config['chapters']['enabled'] is False
 
+    def test_initialization_with_generic_mediawiki_api_endpoint(self):
+        """Test initialization with a generic MediaWiki API endpoint."""
+        spider = UniversalFandomSpider(
+            input_source="https://wiki.example.org/w/api.php",
+            input_type="url"
+        )
+
+        assert spider.wiki_url == "https://wiki.example.org/w"
+        assert spider.api_url == "https://wiki.example.org/w/api.php"
+        assert spider.wiki_domain == "wiki.example.org"
+        assert spider.wiki_target.is_fandom is False
+
     @patch('scraper.universal_fandom_spider.BraveSearchClient')
     def test_initialization_with_name(self, mock_brave_client, mock_brave_search_result):
         """Test initialization with anime name (Brave Search)."""

@@ -5,6 +5,7 @@ Rate limiting middleware for the API.
 This module provides a sliding window rate limiter to prevent API abuse.
 """
 
+import os
 import time
 import logging
 from collections import defaultdict
@@ -111,6 +112,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Process the request through the rate limiter."""
         # Skip rate limiting for excluded paths
         if any(request.url.path.startswith(path) for path in self.exclude_paths):
+            return await call_next(request)
+        if os.getenv("FANDOM_DEMO_MODE", "false").lower() == "true" and request.url.path.startswith(("/api/v1/scraper", "/api/v1/characters", "/frontend")):
             return await call_next(request)
 
         client_ip = self._get_client_ip(request)

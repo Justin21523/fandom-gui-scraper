@@ -1,8 +1,8 @@
 """
 Scrapy middlewares for request/response processing.
 
-This module contains custom middlewares to handle anti-ban measures,
-user agent rotation, retry logic, and response processing.
+This module contains custom middlewares for polite crawling,
+user agent configuration, retry logic, and response processing.
 """
 
 import random
@@ -12,21 +12,21 @@ from typing import Optional, Union
 from scrapy import signals
 from scrapy.http import HtmlResponse, Request
 from scrapy.downloadermiddlewares.retry import RetryMiddleware
-from scrapy.exceptions import NotConfigured, IgnoreRequest
+from scrapy.exceptions import IgnoreRequest
 from scrapy.utils.python import global_object_name
 from scrapy.utils.response import response_status_message
 
-from scraper.utils.anti_ban import AntiBanManager, ProxyRotator
+from scraper.utils.anti_ban import AntiBanManager
 
 logger = logging.getLogger(__name__)
 
 
 class RandomUserAgentMiddleware:
     """
-    Rotate User-Agent headers to avoid detection.
+    Set User-Agent headers from a configured list.
 
-    This middleware randomly selects user agents from a predefined list
-    to make requests appear to come from different browsers.
+    Prefer a descriptive project User-Agent in production. Rotation remains
+    available for legacy configs but is not required for compliant crawling.
     """
 
     def __init__(self, user_agent_list: Optional[list] = None):
@@ -68,21 +68,20 @@ class RandomUserAgentMiddleware:
 
 class AntiBanMiddleware:
     """
-    Comprehensive anti-ban middleware.
+    Backward-compatible polite crawling middleware.
 
-    This middleware implements various anti-ban strategies including
-    rate limiting, request delays, and behavior mimicking.
+    This middleware applies rate limiting and access-restriction handling.
     """
 
     def __init__(
-        self, requests_per_minute: int = 30, enable_behavior_mimicking: bool = True
+        self, requests_per_minute: int = 30, enable_behavior_mimicking: bool = False
     ):
         """
-        Initialize anti-ban middleware.
+        Initialize polite crawling middleware.
 
         Args:
             requests_per_minute: Rate limit for requests
-            enable_behavior_mimicking: Whether to enable behavior mimicking
+            enable_behavior_mimicking: Deprecated; kept for old configs
         """
         self.anti_ban_manager = AntiBanManager(
             requests_per_minute=requests_per_minute,
@@ -94,8 +93,14 @@ class AntiBanMiddleware:
         """Create middleware instance from crawler."""
         settings = crawler.settings
 
-        requests_per_minute = settings.getint("ANTI_BAN_REQUESTS_PER_MINUTE", 30)
-        enable_behavior = settings.getbool("ANTI_BAN_BEHAVIOR_MIMICKING", True)
+        requests_per_minute = settings.getint(
+            "POLITE_CRAWLING_REQUESTS_PER_MINUTE",
+            settings.getint("ANTI_BAN_REQUESTS_PER_MINUTE", 30),
+        )
+        enable_behavior = settings.getbool(
+            "POLITE_CRAWLING_BEHAVIOR_MIMICKING",
+            settings.getbool("ANTI_BAN_BEHAVIOR_MIMICKING", False),
+        )
 
         middleware = cls(requests_per_minute, enable_behavior)
 
@@ -107,15 +112,15 @@ class AntiBanMiddleware:
 
     def spider_opened(self, spider):
         """Called when spider is opened."""
-        logger.info(f"Anti-ban middleware activated for spider: {spider.name}")
+        logger.info(f"Polite crawling middleware activated for spider: {spider.name}")
 
     def spider_closed(self, spider):
         """Called when spider is closed."""
         stats = self.anti_ban_manager.get_stats()
-        logger.info(f"Anti-ban stats for spider {spider.name}: {stats}")
+        logger.info(f"Polite crawling stats for spider {spider.name}: {stats}")
 
     def process_request(self, request: Request, spider):
-        """Process request with anti-ban measures."""
+        """Process request with polite crawling controls."""
         url = request.url
         headers = dict(request.headers.to_unicode_dict())
 
@@ -124,14 +129,14 @@ class AntiBanMiddleware:
             url, headers
         )
         if not should_proceed:
-            logger.warning(f"Request blocked by anti-ban: {reason}")
-            raise IgnoreRequest(f"Anti-ban: {reason}")
+            logger.warning(f"Request skipped by polite crawling controls: {reason}")
+            raise IgnoreRequest(f"Polite crawling: {reason}")
 
-        # Apply anti-ban delays
+        # Apply configured delays
         content_length = request.meta.get("previous_content_length")
         self.anti_ban_manager.wait_before_request(content_length)
 
-        # Prepare headers with anti-ban measures
+        # Prepare request headers
         modified_headers = self.anti_ban_manager.prepare_request(url, headers)
 
         # Update request headers
@@ -141,7 +146,7 @@ class AntiBanMiddleware:
         return None
 
     def process_response(self, request: Request, response: HtmlResponse, spider):
-        """Process response and update anti-ban state."""
+        """Process response and update polite crawling state."""
         url = request.url
         headers = dict(request.headers.to_unicode_dict())
         response_headers = dict(response.headers.to_unicode_dict())
@@ -155,7 +160,7 @@ class AntiBanMiddleware:
         # Calculate content length
         content_length = len(response.body) if response.body else 0
 
-        # Update anti-ban manager
+        # Update request control state
         self.anti_ban_manager.process_response(
             url=url,
             headers=headers,
@@ -171,7 +176,7 @@ class AntiBanMiddleware:
         return response
 
     def process_exception(self, request: Request, exception: Exception, spider):
-        """Process exceptions and update anti-ban state."""
+        """Process exceptions and update request control state."""
         url = request.url
         headers = dict(request.headers.to_unicode_dict())
 
@@ -185,68 +190,12 @@ class AntiBanMiddleware:
         return None
 
 
-class ProxyRotationMiddleware:
-    """
-    Rotate proxy servers to avoid IP-based bans.
-
-    This middleware manages a pool of proxy servers and rotates
-    through them for different requests.
-    """
-
-    def __init__(self, proxy_list: Optional[list] = None):
-        """
-        Initialize proxy rotation middleware.
-
-        Args:
-            proxy_list: List of proxy URLs
-        """
-        if not proxy_list:
-            raise NotConfigured("No proxy list provided")
-
-        self.proxy_rotator = ProxyRotator(proxy_list)
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        """Create middleware instance from crawler."""
-        proxy_list = crawler.settings.getlist("PROXY_LIST")
-        if not proxy_list:
-            raise NotConfigured("PROXY_LIST setting is required")
-
-        return cls(proxy_list)
-
-    def process_request(self, request: Request, spider):
-        """Process request and set proxy."""
-        proxy = self.proxy_rotator.get_next_proxy()
-        if proxy:
-            request.meta["proxy"] = proxy
-            logger.debug(f"Using proxy: {proxy}")
-
-        return None
-
-    def process_response(self, request: Request, response: HtmlResponse, spider):
-        """Process response and update proxy stats."""
-        proxy = request.meta.get("proxy")
-        if proxy:
-            success = 200 <= response.status < 400
-            self.proxy_rotator.record_proxy_result(proxy, success)
-
-        return response
-
-    def process_exception(self, request: Request, exception: Exception, spider):
-        """Process exceptions and update proxy stats."""
-        proxy = request.meta.get("proxy")
-        if proxy:
-            self.proxy_rotator.record_proxy_result(proxy, False)
-
-        return None
-
-
 class SmartRetryMiddleware(RetryMiddleware):
     """
     Enhanced retry middleware with smart backoff strategies.
 
     This middleware extends the default retry middleware with
-    exponential backoff and ban detection.
+    exponential backoff and access restriction detection.
     """
 
     def __init__(self, settings):
@@ -256,7 +205,7 @@ class SmartRetryMiddleware(RetryMiddleware):
         self.max_delay = settings.getfloat("RETRY_MAX_DELAY", 60.0)
         self.backoff_multiplier = settings.getfloat("RETRY_BACKOFF_MULTIPLIER", 2.0)
 
-        # Ban detection settings
+        # Access restriction settings
         self.ban_codes = set(settings.getlist("RETRY_BAN_CODES", [403, 429, 503, 999]))
         self.ban_delay = settings.getfloat("RETRY_BAN_DELAY", 300.0)  # 5 minutes
 

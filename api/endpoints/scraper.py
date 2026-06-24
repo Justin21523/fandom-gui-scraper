@@ -24,6 +24,16 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 
 from api.security.jwt import get_current_user
+from scraper.mediawiki.campaign import (
+    CampaignConfig,
+    DEFAULT_CAMPAIGN_ID,
+    DEFAULT_TARGETS,
+    list_campaigns,
+    load_campaign,
+    load_campaign_events,
+    run_campaign,
+)
+from scraper.mediawiki.query import ParquetUnavailableError, WikiDBQueryService
 
 # Import scraper modules
 try:
@@ -136,10 +146,15 @@ class UniversalScraperConfig(BaseModel):
 
     # Storage controls (optional; used by job-based runner)
     use_playwright: bool = Field(default=False, description="Enable Playwright from the start")
-    use_playwright_detail_pages: bool = Field(default=False, description="Use Playwright for detail pages (heavier, but more reliable on blocked wikis)")
+    use_playwright_detail_pages: bool = Field(default=False, description="Use Playwright for detail pages that require JavaScript rendering")
     download_images: bool = Field(default=False, description="Download images (storage heavy)")
     export_mode: str = Field(default=os.getenv("EXPORT_MODE", "jsonl"), description="per_item | jsonl")
     export_json_gzip: bool = Field(default=os.getenv("EXPORT_JSON_GZIP", "false").lower() == "true", description="Compress JSON exports")
+    enable_wiki_sqlite: bool = Field(default=True, description="Store MediaWiki-native data in wiki.db")
+    mediawiki_page_limit: int = Field(default=200, ge=0, description="Max MediaWiki API pages to store in SQLite")
+    include_page_text: bool = Field(default=True, description="Store latest page text in SQLite")
+    include_infobox_html: bool = Field(default=True, description="Use action=parse fallback for infobox-like HTML fields")
+    parse_html_limit: int = Field(default=25, ge=0, le=500, description="Max pages to inspect with action=parse fallback")
     keep_job_days: int = Field(default=14, ge=1, le=365, description="Retention for job outputs")
 
 
@@ -172,6 +187,71 @@ class UniversalScraperStatus(BaseModel):
     wiki_url: Optional[str] = None
     progress: Optional[UniversalScraperProgress] = None
     error: Optional[str] = None
+
+
+class CampaignRunRequest(BaseModel):
+    campaign_id: str = Field(default=DEFAULT_CAMPAIGN_ID)
+    targets: List[str] = Field(default_factory=lambda: list(DEFAULT_TARGETS))
+    page_limit: int = Field(default=50, ge=1, le=500)
+    batch_size: int = Field(default=25, ge=1, le=100)
+    rate_delay: float = Field(default=1.0, ge=0, le=10)
+    parse_html_limit: int = Field(default=10, ge=0, le=100)
+    force: bool = Field(default=False)
+
+
+CAMPAIGN_PRESETS: List[Dict[str, Any]] = [
+    {
+        "id": "offline-portfolio-smoke",
+        "label": "快速離線展示",
+        "description": "Load the bundled portfolio-smoke campaign without network access.",
+        "mode": "sample",
+        "campaign_id": DEFAULT_CAMPAIGN_ID,
+        "targets": [],
+        "defaults": {
+            "page_limit": 50,
+            "batch_size": 25,
+            "rate_delay": 1.0,
+            "parse_html_limit": 10,
+            "force": False,
+        },
+        "offline_available": True,
+    },
+    {
+        "id": "live-quick-two-wikis",
+        "label": "快速即時爬取",
+        "description": "Run a small compliant live crawl against two public Fandom wikis.",
+        "mode": "live",
+        "campaign_id": "portfolio-live-quick",
+        "targets": [
+            "https://onepiece.fandom.com",
+            "https://stardewvalley.fandom.com",
+        ],
+        "defaults": {
+            "page_limit": 30,
+            "batch_size": 15,
+            "rate_delay": 1.25,
+            "parse_html_limit": 6,
+            "force": False,
+        },
+        "offline_available": False,
+    },
+    {
+        "id": "live-compliance-multi-wiki",
+        "label": "多 Wiki 合規展示",
+        "description": "Run the five-wiki portfolio campaign with conservative limits and rate delay.",
+        "mode": "live",
+        "campaign_id": DEFAULT_CAMPAIGN_ID,
+        "targets": list(DEFAULT_TARGETS),
+        "defaults": {
+            "page_limit": 50,
+            "batch_size": 25,
+            "rate_delay": 1.5,
+            "parse_html_limit": 10,
+            "force": False,
+        },
+        "offline_available": False,
+    },
+]
 
 
 # --- Global State ---
@@ -808,6 +888,37 @@ if not JOBS_AVAILABLE:
     # Minimal stubs to keep module importable in environments without Redis/RQ.
     class UniversalJobInfo(BaseModel):  # type: ignore
         job_id: str = ""
+        status: str = "finished"
+        created_at: Optional[datetime] = None
+        started_at: Optional[datetime] = None
+        finished_at: Optional[datetime] = None
+        config: Dict[str, Any] = Field(default_factory=dict)
+        progress: Dict[str, Any] = Field(default_factory=dict)
+        output_root: str = ""
+        error: Optional[str] = None
+
+try:
+    from api.jobs.fs import compute_output_stats, list_files, build_zip
+except Exception:  # pragma: no cover
+    def list_files(root: Path, max_entries: int = 2000) -> List[Dict[str, Any]]:  # type: ignore
+        if not root.exists():
+            return []
+        items: List[Dict[str, Any]] = []
+        for path in sorted(root.rglob("*"))[:max_entries]:
+            rel = path.relative_to(root).as_posix()
+            items.append({"path": rel, "type": "dir" if path.is_dir() else "file", "size": path.stat().st_size if path.is_file() else 0})
+        return items
+
+    def compute_output_stats(root: Path) -> Dict[str, Any]:  # type: ignore
+        files = [path for path in root.rglob("*") if path.is_file()] if root.exists() else []
+        return {"files": len(files), "bytes": sum(path.stat().st_size for path in files)}
+
+    def build_zip(root: Path, target: Path, include_images: bool = True) -> None:  # type: ignore
+        import zipfile
+        with zipfile.ZipFile(target, "w") as zf:
+            for path in root.rglob("*"):
+                if path.is_file():
+                    zf.write(path, path.relative_to(root).as_posix())
 
 
 
@@ -821,6 +932,177 @@ def _set_current_job(job_id: str) -> None:
 
 def _get_current_job() -> Optional[str]:
     return get_redis().get(_current_job_key())
+
+
+def _demo_mode_enabled() -> bool:
+    return os.getenv("FANDOM_DEMO_MODE", "false").lower() == "true"
+
+
+def _demo_jobs_root() -> Path:
+    default_root = Path(__file__).resolve().parents[2] / "sample_data"
+    return Path(os.getenv("FANDOM_DEMO_ROOT", str(default_root))) / "jobs"
+
+
+def _safe_job_id(job_id: str) -> str:
+    safe = "".join(ch for ch in job_id if ch.isalnum() or ch in ("-", "_"))
+    if not safe:
+        raise HTTPException(status_code=400, detail="Invalid job_id")
+    return safe
+
+
+def _jobs_or_demo_available() -> bool:
+    return JOBS_AVAILABLE or _demo_mode_enabled()
+
+
+def _require_jobs_or_demo() -> None:
+    if not _jobs_or_demo_available():
+        raise HTTPException(status_code=503, detail="Job queue not available")
+
+
+def _get_job_dir_for_request(job_id: str) -> Path:
+    if JOBS_AVAILABLE:
+        return get_job_dir(job_id)
+    if _demo_mode_enabled():
+        return _demo_jobs_root() / _safe_job_id(job_id)
+    raise HTTPException(status_code=503, detail="Job queue not available")
+
+
+def _read_demo_manifest(job_dir: Path) -> Dict[str, Any]:
+    manifest_path = job_dir / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _demo_job_info(job_dir: Path) -> Dict[str, Any]:
+    manifest = _read_demo_manifest(job_dir)
+    job_id = manifest.get("job_id") or job_dir.name
+    created_at = manifest.get("created_at") or datetime.fromtimestamp(job_dir.stat().st_mtime).isoformat()
+    return {
+        "job_id": job_id,
+        "status": manifest.get("status", "finished"),
+        "created_at": created_at,
+        "started_at": created_at,
+        "finished_at": created_at,
+        "config": {
+            "input_source": manifest.get("wiki_url", ""),
+            "input_type": "url",
+            "enable_wiki_sqlite": True,
+            "mediawiki_page_limit": manifest.get("counts", {}).get("pages", 0),
+        },
+        "progress": {
+            "overall_completed": manifest.get("counts", {}).get("pages", 0),
+            "overall_total": manifest.get("counts", {}).get("pages", 0),
+        },
+        "output_root": str(job_dir),
+        "error": None,
+    }
+
+
+def _resolve_job_wiki_db(job_id: str) -> Path:
+    job_dir = _get_job_dir_for_request(job_id)
+    base = job_dir.resolve()
+    manifest_path = job_dir / "manifest.json"
+    db_rel = "wiki.db"
+    if manifest_path.exists():
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            db_rel = ((manifest.get("wiki_db") or {}).get("path")) or db_rel
+        except Exception:
+            db_rel = "wiki.db"
+    db_path = (job_dir / db_rel).resolve()
+    if base not in db_path.parents and db_path != base:
+        raise HTTPException(status_code=400, detail="Invalid wiki.db path")
+    if not db_path.exists() or not db_path.is_file():
+        raise HTTPException(status_code=404, detail="wiki.db not found")
+    return db_path
+
+
+def _wiki_db_service(job_id: str) -> WikiDBQueryService:
+    return WikiDBQueryService(_resolve_job_wiki_db(job_id))
+
+
+def _campaign_output_root() -> Path:
+    return Path(os.getenv("FANDOM_DEMO_ROOT", "sample_data"))
+
+
+def _campaign_or_404(campaign_id: str) -> Dict[str, Any]:
+    try:
+        return load_campaign(campaign_id, output_root=_campaign_output_root())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+
+@router.get("/campaigns")
+async def list_campaigns_api(
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user),
+):
+    return {"items": list_campaigns(output_root=_campaign_output_root(), limit=max(1, min(limit, 100)))}
+
+
+@router.get("/campaigns/presets")
+async def list_campaign_presets_api(
+    current_user: dict = Depends(get_current_user),
+):
+    return {"items": CAMPAIGN_PRESETS}
+
+
+@router.get("/campaigns/{campaign_id}")
+async def get_campaign_api(
+    campaign_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    return {"campaign": _campaign_or_404(campaign_id)}
+
+
+@router.get("/campaigns/{campaign_id}/events")
+async def get_campaign_events_api(
+    campaign_id: str,
+    limit: int = 500,
+    current_user: dict = Depends(get_current_user),
+):
+    _campaign_or_404(campaign_id)
+    return {
+        "campaign_id": campaign_id,
+        "events": load_campaign_events(campaign_id, output_root=_campaign_output_root(), limit=max(1, min(limit, 5000))),
+    }
+
+
+@router.get("/campaigns/{campaign_id}/analysis")
+async def get_campaign_analysis_api(
+    campaign_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    campaign = _campaign_or_404(campaign_id)
+    return {"campaign_id": campaign_id, "analysis": campaign.get("analysis") or {}}
+
+
+@router.post("/campaigns/run")
+async def run_campaign_api(
+    request: CampaignRunRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+):
+    background_tasks.add_task(
+        run_campaign,
+        CampaignConfig(
+            campaign_id=request.campaign_id,
+            targets=request.targets,
+            output_root=_campaign_output_root(),
+            page_limit=request.page_limit,
+            batch_size=request.batch_size,
+            rate_delay=request.rate_delay,
+            parse_html_limit=request.parse_html_limit,
+            force=request.force,
+        ),
+    )
+    return {"status": "queued", "campaign_id": request.campaign_id, "targets": request.targets}
 
 
 @router.post("/jobs", response_model=UniversalJobInfo)
@@ -853,6 +1135,11 @@ async def create_universal_job(
         download_images=getattr(config, "download_images", False),
         export_mode=getattr(config, "export_mode", "jsonl"),
         export_json_gzip=getattr(config, "export_json_gzip", True),
+        enable_wiki_sqlite=getattr(config, "enable_wiki_sqlite", True),
+        mediawiki_page_limit=getattr(config, "mediawiki_page_limit", 200),
+        include_page_text=getattr(config, "include_page_text", True),
+        include_infobox_html=getattr(config, "include_infobox_html", True),
+        parse_html_limit=getattr(config, "parse_html_limit", 25),
         keep_job_days=getattr(config, "keep_job_days", 14),
     )
 
@@ -876,6 +1163,12 @@ async def list_universal_jobs_api(
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
 ):
+    if not JOBS_AVAILABLE and _demo_mode_enabled():
+        root = _demo_jobs_root()
+        if not root.exists():
+            return []
+        jobs = [_demo_job_info(path) for path in sorted(root.iterdir()) if path.is_dir()]
+        return jobs[: max(1, min(limit, 200))]
     if not JOBS_AVAILABLE:
         raise HTTPException(status_code=503, detail="Job queue not available")
     return list_jobs(limit=limit)
@@ -886,6 +1179,11 @@ async def get_universal_job_api(
     job_id: str,
     current_user: dict = Depends(get_current_user),
 ):
+    if not JOBS_AVAILABLE and _demo_mode_enabled():
+        job_dir = _get_job_dir_for_request(job_id)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail="Job not found")
+        return _demo_job_info(job_dir)
     if not JOBS_AVAILABLE:
         raise HTTPException(status_code=503, detail="Job queue not available")
     info = get_job(job_id)
@@ -900,6 +1198,12 @@ async def get_universal_job_logs_api(
     limit: int = 200,
     current_user: dict = Depends(get_current_user),
 ):
+    if not JOBS_AVAILABLE and _demo_mode_enabled():
+        job_dir = _get_job_dir_for_request(job_id)
+        log_path = job_dir / "logs" / "scrape.log"
+        if not log_path.exists():
+            return {"job_id": job_id, "logs": []}
+        return {"job_id": job_id, "logs": log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:]}
     if not JOBS_AVAILABLE:
         raise HTTPException(status_code=503, detail="Job queue not available")
     return {"job_id": job_id, "logs": get_logs(job_id, limit=limit)}
@@ -945,9 +1249,8 @@ async def list_universal_job_files_api(
     limit: int = 2000,
     current_user: dict = Depends(get_current_user),
 ):
-    if not JOBS_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Job queue not available")
-    job_dir = get_job_dir(job_id)
+    _require_jobs_or_demo()
+    job_dir = _get_job_dir_for_request(job_id)
     return {"job_id": job_id, "items": list_files(job_dir, max_entries=limit)}
 
 
@@ -956,9 +1259,8 @@ async def get_universal_job_output_stats_api(
     job_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    if not JOBS_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Job queue not available")
-    job_dir = get_job_dir(job_id)
+    _require_jobs_or_demo()
+    job_dir = _get_job_dir_for_request(job_id)
     return {"job_id": job_id, "stats": compute_output_stats(job_dir)}
 
 @router.get("/jobs/{job_id}/manifest")
@@ -966,9 +1268,8 @@ async def get_universal_job_manifest_api(
     job_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    if not JOBS_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Job queue not available")
-    job_dir = get_job_dir(job_id)
+    _require_jobs_or_demo()
+    job_dir = _get_job_dir_for_request(job_id)
     manifest = job_dir / "manifest.json"
     if not manifest.exists():
         raise HTTPException(status_code=404, detail="manifest.json not found")
@@ -977,6 +1278,96 @@ async def get_universal_job_manifest_api(
             return {"job_id": job_id, "manifest": json.load(f)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read manifest: {e}")
+
+
+@router.get("/jobs/{job_id}/wiki-db/summary")
+async def get_universal_job_wiki_db_summary_api(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    _require_jobs_or_demo()
+    return {"job_id": job_id, "summary": _wiki_db_service(job_id).summary()}
+
+
+@router.get("/jobs/{job_id}/wiki-db/tables")
+async def get_universal_job_wiki_db_tables_api(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    _require_jobs_or_demo()
+    return {"job_id": job_id, **_wiki_db_service(job_id).tables()}
+
+
+@router.get("/jobs/{job_id}/wiki-db/table/{dataset}")
+async def browse_universal_job_wiki_db_table_api(
+    job_id: str,
+    dataset: str,
+    limit: int = 100,
+    offset: int = 0,
+    q: Optional[str] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    _require_jobs_or_demo()
+    try:
+        return {"job_id": job_id, **_wiki_db_service(job_id).table(dataset, limit=limit, offset=offset, q=q)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/jobs/{job_id}/wiki-db/pages/{page_id}")
+async def get_universal_job_wiki_db_page_api(
+    job_id: str,
+    page_id: int,
+    current_user: dict = Depends(get_current_user),
+):
+    _require_jobs_or_demo()
+    try:
+        return {"job_id": job_id, **_wiki_db_service(job_id).page_detail(page_id)}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+
+@router.get("/jobs/{job_id}/wiki-db/analysis")
+async def get_universal_job_wiki_db_analysis_api(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    _require_jobs_or_demo()
+    return {"job_id": job_id, "analysis": _wiki_db_service(job_id).analysis()}
+
+
+@router.get("/jobs/{job_id}/wiki-db/export")
+async def export_universal_job_wiki_db_api(
+    job_id: str,
+    dataset: str = "pages",
+    format: str = "csv",
+    current_user: dict = Depends(get_current_user),
+):
+    _require_jobs_or_demo()
+    try:
+        path = _wiki_db_service(job_id).export_dataset(dataset, format)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ParquetUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    def _cleanup():
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    media_types = {
+        "csv": "text/csv",
+        "json": "application/json",
+        "parquet": "application/vnd.apache.parquet",
+    }
+    return FileResponse(
+        path=str(path),
+        filename=f"{job_id}_{dataset}.{format}",
+        media_type=media_types.get(format, "application/octet-stream"),
+        background=BackgroundTask(_cleanup),
+    )
 
 
 @router.get("/jobs/{job_id}/file-preview")
@@ -990,12 +1381,11 @@ async def preview_universal_job_file_api(
     Preview a small number of lines/records from an output file for the frontend Browse view.
     Supports .json, .jsonl, .jsonl.gz.
     """
-    if not JOBS_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Job queue not available")
+    _require_jobs_or_demo()
     if limit < 1 or limit > 2000:
         raise HTTPException(status_code=400, detail="limit must be between 1 and 2000")
 
-    job_dir = get_job_dir(job_id)
+    job_dir = _get_job_dir_for_request(job_id)
     base = job_dir.resolve()
     target = (job_dir / path).resolve()
     if base not in target.parents and target != base:
@@ -1072,9 +1462,8 @@ async def download_universal_job_api(
     include_images: bool = True,
     current_user: dict = Depends(get_current_user),
 ):
-    if not JOBS_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Job queue not available")
-    job_dir = get_job_dir(job_id)
+    _require_jobs_or_demo()
+    job_dir = _get_job_dir_for_request(job_id)
     if not job_dir.exists():
         raise HTTPException(status_code=404, detail="Job output not found")
 

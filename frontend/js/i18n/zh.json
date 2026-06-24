@@ -27,18 +27,190 @@
         "logout": "登出",
         "login": "登入",
         "noData": "沒有資料",
-        "loadMore": "載入更多"
+        "loadMore": "載入更多",
+        "retry": "重試",
+        "clear": "清除",
+        "download": "下載",
+        "configure": "設定",
+        "queued": "已排程",
+        "sampleDemo": "範例展示",
+        "liveCrawl": "即時爬取"
+    },
+    "status": {
+        "passed": "通過",
+        "ready": "就緒",
+        "completed": "完成",
+        "finished": "完成",
+        "skipped": "略過",
+        "partial": "部分完成",
+        "stopped": "已停止",
+        "running": "執行中",
+        "warning": "警告",
+        "planned": "計畫中",
+        "failed": "失敗",
+        "error": "錯誤",
+        "queued": "已排程",
+        "idle": "閒置"
     },
     "nav": {
         "home": "首頁",
         "characters": "角色列表",
         "scraper": "爬蟲控制",
         "jobs": "任務管理",
+        "campaigns": "爬取活動",
         "browse": "資料瀏覽",
+        "process": "流程",
+        "analysis": "分析",
+        "export": "匯出",
+        "compliance": "合規",
         "charts": "圖表分析",
         "media": "媒體庫",
         "settings": "設定",
         "help": "說明"
+    },
+    "portfolio": {
+        "loadingPreparing": "正在準備即時資料、圖表與流程狀態...",
+        "notice": {
+            "live": "即時 API 資料",
+            "demo": "範例資料集"
+        },
+        "actions": {
+            "loadSample": "載入範例展示",
+            "runLive": "執行即時爬取",
+            "runPreset": "執行所選 preset",
+            "refreshStatus": "刷新狀態",
+            "browse": "瀏覽資料",
+            "openErrors": "開啟錯誤資料集",
+            "viewResults": "查看結果"
+        },
+        "metrics": {
+            "wikis": "Wiki 數量",
+            "wikisHelp": "公開 Fandom 站台",
+            "pages": "頁面數",
+            "pagesHelp": "SQLite 頁面紀錄",
+            "links": "連結數",
+            "linksHelp": "關聯網路輸入",
+            "errors": "錯誤數",
+            "errorsHelp": "已記錄的爬取問題"
+        },
+        "datasets": {
+            "pages": "頁面",
+            "categories": "分類",
+            "links": "連結",
+            "templates": "模板",
+            "images": "圖片",
+            "revisions": "修訂",
+            "infoboxes": "Infobox",
+            "errors": "錯誤",
+            "checkpoints": "Checkpoint"
+        },
+        "campaigns": {
+            "title": "爬取活動",
+            "subtitle": "執行並檢視多個公開 Fandom / MediaWiki 站台的爬取活動。",
+            "selector": "活動",
+            "searchWikis": "搜尋 Wiki",
+            "status": "狀態",
+            "wikiTable": "Wiki 輸出",
+            "executionEvents": "執行事件",
+            "errorDrilldown": "錯誤追蹤",
+            "noCampaign": "目前沒有爬取活動。請載入範例展示或執行即時爬取。",
+            "noErrors": "此活動沒有記錄到爬取錯誤或警告事件。",
+            "queued": "爬取活動已排程，頁面會在執行期間自動刷新。",
+            "unavailable": "無法取得爬取活動資料。",
+            "eventsCount": "{{count}} 筆事件",
+            "sampleLoaded": "已從本機資料載入範例展示。",
+            "errorRecords": "{{count}} 筆爬取錯誤紀錄",
+            "warningEvents": "警告與停止事件",
+            "preset": "展示 preset",
+            "mode": "模式",
+            "defaults": "預設值",
+            "defaultSummary": "{{pages}} 頁 · {{delay}} 秒延遲 · {{html}} 頁 HTML fallback",
+            "offlineTarget": "內建離線範例",
+            "liveOptions": "即時爬取選項"
+        },
+        "browse": {
+            "title": "資料瀏覽",
+            "subtitle": "瀏覽頁面、分類、連結、模板、圖片、修訂、infobox 類資料、錯誤與 checkpoint。",
+            "runs": "任務",
+            "datasetBrowser": "資料集瀏覽器",
+            "selectRun": "選擇一個任務",
+            "files": "檔案",
+            "fileHelp": "選擇檔案後可預覽前幾筆資料。",
+            "preview": "預覽",
+            "manifest": "manifest.json",
+            "wikiDb": "SQLite wiki.db",
+            "dataset": "{{dataset}} 資料集",
+            "matchingRows": "{{count}} 筆符合資料",
+            "searchDataset": "搜尋 {{dataset}}",
+            "noRows": "目前篩選條件下沒有資料。",
+            "noRelationRows": "沒有資料",
+            "selectedPageDetail": "已選頁面詳情",
+            "pageId": "頁面 ID",
+            "namespace": "命名空間",
+            "length": "長度",
+            "touched": "更新時間",
+            "demoRun": "範例資料集",
+            "demoNotice": "目前沒有可用的即時任務，因此顯示小型公開 Fandom 流程範例。",
+            "loadFailed": "資料載入失敗",
+            "wikiDbUnavailable": "wiki.db 無法使用"
+        },
+        "analysis": {
+            "title": "資料分析",
+            "subtitle": "查看分類、文字、關聯網路與資料品質分析。",
+            "topCategory": "主要分類",
+            "topTerm": "高頻詞",
+            "networkNodes": "網路節點",
+            "qualityWarnings": "品質警告",
+            "perWiki": "各 Wiki 比較",
+            "categoryAnalysis": "分類分析",
+            "textAnalysis": "文字分析",
+            "relationshipNetwork": "關聯網路",
+            "dataQuality": "資料品質",
+            "connectedEdges": "關聯邊",
+            "noData": "目前沒有資料。",
+            "noPerWiki": "目前沒有各 Wiki 分析資料。",
+            "noNetwork": "目前沒有可取樣的連結資料。",
+            "noEdges": "此選取項目沒有可顯示的關聯邊。",
+            "liveCampaign": "即時爬取活動分析",
+            "liveWikiDb": "即時 wiki.db 分析",
+            "showingCampaign": "顯示活動 {{id}} 的彙總分析。",
+            "showingJob": "顯示任務 {{id}} 的 SQLite 分析。"
+        },
+        "process": {
+            "title": "爬蟲流程",
+            "subtitle": "透明呈現 URL 正規化、MediaWiki Action API、HTML fallback、checkpoint 與匯出流程。",
+            "configureJob": "設定任務",
+            "runContext": "執行內容",
+            "apiPolicy": "API 優先策略",
+            "apiPolicyText": "爬蟲會優先使用 MediaWiki Action API 取得結構化資料；HTML 解析只用於缺少的 infobox 類欄位或呈現層細節。",
+            "timeline": "執行時間線"
+        },
+        "export": {
+            "title": "匯出中心",
+            "subtitle": "檢視 SQLite、CSV、JSON 與 Parquet 匯出狀態，供後續分析與作品集展示使用。",
+            "manifest": "匯出清單",
+            "datasets": "SQLite 資料集匯出",
+            "artifacts": "成果檔案",
+            "useCases": "後續使用情境",
+            "parquetRequired": "需要 pyarrow",
+            "liveNotice": "可從任務 {{id}} 下載 CSV/JSON 資料集；安裝 pyarrow 後可啟用 Parquet。",
+            "dataset": "資料集",
+            "rows": "筆數",
+            "sqliteUse": "本機查詢、續跑狀態檢查，以及精簡的作品集展示資料。",
+            "jsonUse": "適合串流處理的紀錄格式，可供 app 整合與資料預覽。",
+            "csvUse": "適合試算表檢視與簡單資料品質稽核。",
+            "parquetUse": "適合大型 wiki 資料集的欄式分析格式。"
+        },
+        "compliance": {
+            "title": "合規紀錄",
+            "subtitle": "檢視 robots、描述性 User-Agent、rate limit、retry/backoff 與限制頁面停止策略。",
+            "events": "合規事件",
+            "nonGoals": "明確不做的功能",
+            "robots": "Robots 策略",
+            "rateLimit": "速率限制",
+            "retryStyle": "重試策略",
+            "userAgent": "User-Agent"
+        }
     },
     "home": {
         "title": "儀表板",
@@ -138,6 +310,75 @@
             "anime": "動畫",
             "count": "數量",
             "duration": "耗時"
+        },
+        "universal": {
+            "title": "通用 Fandom 爬蟲",
+            "subtitle": "設定合規的 Fandom 或 MediaWiki 爬取任務，並以 Action API 優先收集資料。",
+            "newJob": "新增爬取任務",
+            "inputSource": "輸入來源",
+            "wikiNameSearch": "Wiki 名稱搜尋",
+            "urlEndpoint": "URL / API endpoint",
+            "wikiTopicName": "Wiki 或主題名稱",
+            "topic": "主題",
+            "topicPlaceholder": "例如：One Piece",
+            "searchResults": "搜尋結果",
+            "urlLabel": "Fandom URL 或 MediaWiki API endpoint",
+            "urlHelp": "後端會自動正規化 wiki base URL 與 api.php endpoint。",
+            "contentScope": "爬取範圍",
+            "pagesCharacters": "頁面 / 角色",
+            "categoriesEpisodes": "分類 / 劇集",
+            "imagesGalleries": "圖片 / 圖庫",
+            "linksChapters": "連結 / 章節",
+            "limits": "各資料集上限",
+            "maxPages": "頁面 / 角色上限",
+            "maxCategories": "分類 / 劇集上限",
+            "maxImages": "圖片上限",
+            "maxLinks": "連結 / 章節上限",
+            "noLimitHelp": "0 = 不限制",
+            "complianceExport": "合規與匯出選項",
+            "requestDelay": "請求延遲（秒）",
+            "retries": "重試次數",
+            "runtimeControls": "執行控制",
+            "usePlaywright": "一開始就使用 Playwright 處理 JavaScript-rendered pages",
+            "usePlaywrightDetail": "只在需要 JavaScript rendering 的詳情頁使用 Playwright",
+            "downloadImages": "下載圖片（儲存空間較大，預設關閉）",
+            "compressJson": "壓縮 JSON 匯出（.gz）",
+            "jsonExportMode": "JSON 匯出模式",
+            "exportJsonl": "jsonl（將紀錄追加到較少檔案）",
+            "exportPerItem": "per_item（每筆一個檔案，較容易檢查）",
+            "exportModeHelp": "建議大型 wiki 使用 jsonl + gzip。",
+            "startCrawl": "開始爬取",
+            "pause": "暫停",
+            "stop": "停止",
+            "resume": "繼續",
+            "recentRuns": "最近執行",
+            "recentJobs": "最近任務",
+            "crawlProgress": "爬取進度",
+            "liveLogs": "即時日誌",
+            "waiting": "等待開始...",
+            "enterTopic": "請輸入 Wiki 或主題名稱。",
+            "searching": "搜尋中...",
+            "resultsFound": "找到 {{count}} 個結果。",
+            "searchFailed": "搜尋失敗：{{message}}",
+            "selectWikiFirst": "請先搜尋並選擇一個 wiki。",
+            "enterWikiUrl": "請輸入 wiki URL。",
+            "selectScope": "請至少選擇一個爬取範圍。",
+            "started": "Universal Scraper 已啟動。",
+            "startedJob": "Universal Scraper 已啟動（Job: {{id}}）",
+            "startFailed": "啟動失敗：{{message}}",
+            "noJobs": "目前沒有任務。",
+            "switchJob": "切換",
+            "jobSelected": "已切換到任務 {{id}}。",
+            "loadFailed": "載入失敗。",
+            "resumed": "已繼續。",
+            "paused": "已暫停。",
+            "stopped": "已停止。",
+            "completed": "爬取完成，共完成 {{count}} 項。",
+            "disabled": "未啟用",
+            "noHistory": "目前沒有爬取歷史紀錄。",
+            "completedCount": "{{count}} 完成",
+            "failedCount": "{{count}} 失敗",
+            "historyFailed": "載入爬取歷史失敗。"
         }
     },
     "charts": {
@@ -170,8 +411,11 @@
             "language": "語言",
             "theme": "主題",
             "lightTheme": "淺色",
-            "darkTheme": "深色",
-            "autoTheme": "自動（跟隨系統）"
+            "darkTheme": "靛藍",
+            "oceanTheme": "海藍",
+            "autoTheme": "自動（跟隨系統）",
+            "languageDescription": "選擇介面顯示語言",
+            "themeDescription": "選擇清晰易讀的顏色主題"
         },
         "api": {
             "title": "API 設定",
@@ -214,5 +458,69 @@
         "last": "最後一頁",
         "prev": "上一頁",
         "next": "下一頁"
+    },
+    "tour": {
+        "title": "展示導覽小幫手",
+        "launcher": "導覽",
+        "open": "開啟展示導覽",
+        "eyebrow": "步驟 {{current}} / {{total}}",
+        "skip": "略過",
+        "finish": "完成",
+        "restart": "重新開始導覽",
+        "targetMissing": "這個區塊還在載入或目前沒有資料；你仍可繼續下一步。",
+        "steps": {
+            "campaigns": {
+                "title": "從 Campaigns 看整體成果",
+                "body": "這裡是作品集展示的入口：可查看多個 Fandom wiki 的 crawl 狀態、資料量、錯誤摘要與最新執行事件。"
+            },
+            "preset": {
+                "title": "選擇離線或即時 demo",
+                "body": "面試展示時建議先用快速離線 demo，確保不用依賴外部網路；也可以切到合規即時 crawl preset。"
+            },
+            "events": {
+                "title": "追蹤 crawler pipeline",
+                "body": "事件時間線會呈現 URL normalization、robots check、API discovery、page fetch、checkpoint、export 等流程。"
+            },
+            "scraperSource": {
+                "title": "建立新的 scrape job",
+                "body": "使用者可輸入 Fandom wiki 名稱、完整 wiki URL，或 MediaWiki API endpoint，系統會自動偵測並正規化來源。"
+            },
+            "scraperCompliance": {
+                "title": "合規與 runtime 設定",
+                "body": "這裡控制 rate limit、retry、JSON export、Playwright fallback 等選項；不做 CAPTCHA、proxy pool 或 fingerprint bypass。"
+            },
+            "scraperProgress": {
+                "title": "執行過程與 loading 狀態",
+                "body": "開始任務後，進度、速度、ETA、分類完成度與 log 會同步更新，讓整個流程能被視覺化展示。"
+            },
+            "process": {
+                "title": "完整 crawler process",
+                "body": "Process 頁把 API-first 的技術流程拆成可讀步驟，包含 fallback、checkpoint 與 SQLite 寫入脈絡。"
+            },
+            "browseRuns": {
+                "title": "選擇 crawl run",
+                "body": "Browse 會讀取實際 job 或 bundled demo data，讓使用者切換不同 run 並檢查資料來源。"
+            },
+            "browseDatasets": {
+                "title": "瀏覽 wiki.db datasets",
+                "body": "這裡可以搜尋與分頁查看 pages、categories、links、templates、images、revisions、infoboxes、errors。"
+            },
+            "analysisNetwork": {
+                "title": "關聯網路視覺化",
+                "body": "Analysis 會把 wiki links 抽成 network graph，協助展示資料工程後的分析價值。"
+            },
+            "analysisQuality": {
+                "title": "資料品質檢查",
+                "body": "品質區塊會列出缺欄、重複、警告與非阻斷問題，讓 pipeline 不只會抓，也能評估資料可信度。"
+            },
+            "export": {
+                "title": "匯出中心",
+                "body": "Export 頁展示 SQLite、CSV、JSON 與 Parquet 狀態；若 Parquet runtime 不可用，會清楚提示而不讓 app crash。"
+            },
+            "compliance": {
+                "title": "合規紀錄",
+                "body": "Compliance Log 記錄 robots、rate limit、403/429、停止原因與非目標功能，凸顯這是合規 scraper 平台。"
+            }
+        }
     }
 }

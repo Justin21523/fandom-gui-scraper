@@ -1,8 +1,7 @@
 # api/endpoints/__init__.py
-"""
-API endpoint routers.
+"""API endpoint router package.
+
+Routers are imported explicitly by `api.main`.
 """
 
-from api.endpoints import characters, auth, ws
-
-__all__ = ["characters", "auth", "ws"]
+__all__: list[str] = []

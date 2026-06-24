@@ -62,6 +62,7 @@ export async function setLocale(locale) {
     await loadLocale(locale);
     currentLocale = locale;
     localStorage.setItem('locale', locale);
+    document.documentElement.lang = locale === 'zh' ? 'zh-Hant' : 'en';
 
     // 更新全域狀態
     globalStore.setState({ locale });

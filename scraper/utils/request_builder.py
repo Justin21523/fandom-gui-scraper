@@ -3,7 +3,7 @@
 HTTP request builder utility for web scraping.
 
 This module provides utilities to build and customize HTTP requests
-with proper headers, user agents, and anti-detection measures.
+with proper headers, user agents, and polite request timing.
 """
 
 import random
@@ -16,10 +16,10 @@ from scrapy import Request
 
 class RequestBuilder:
     """
-    Build customized HTTP requests with anti-detection features.
+    Build customized HTTP requests with consistent headers and timing.
 
     This class helps create requests with rotating user agents,
-    proper headers, and delays to avoid being blocked.
+    proper headers, and delays for polite crawling.
     """
 
     # Common user agents for different browsers

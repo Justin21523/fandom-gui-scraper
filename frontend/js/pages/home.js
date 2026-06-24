@@ -8,6 +8,8 @@ import { getScraperStatus } from '../api/scraper.js';
 import { formatNumber, formatRelativeTime } from '../utils/formatters.js';
 import router from '../router.js';
 import toast from '../components/toast.js';
+import { loadDemoSnapshot } from '../services/demoData.js';
+import { renderDemoNotice, renderMetricCards } from './portfolioShared.js';
 
 /**
  * 渲染首頁
@@ -18,8 +20,8 @@ export async function renderHomePage(container) {
         <div class="page animate-fadeIn">
             <div class="page__header">
                 <div>
-                    <h1 class="page__title">${t('home.title')}</h1>
-                    <p class="page__subtitle">${t('home.welcome')}</p>
+                    <h1 class="page__title">Fandom / MediaWiki Wiki Data Scraper & Analysis Platform</h1>
+                    <p class="page__subtitle">Portfolio demo for API-first crawling, compliant runtime controls, data browsing, analysis, and exports.</p>
                 </div>
                 <div class="page__actions">
                     <button class="btn btn--primary" id="start-scraper-btn">
@@ -29,6 +31,18 @@ export async function renderHomePage(container) {
                         ${t('home.startScraper')}
                     </button>
                 </div>
+            </div>
+
+            <div id="portfolio-demo-summary"></div>
+
+            <div class="workflow-strip mb-lg">
+                <a href="#/scraper">New Scrape Job</a>
+                <a href="#/campaigns">Campaigns</a>
+                <a href="#/process">Crawler Process</a>
+                <a href="#/browse">Data Browser</a>
+                <a href="#/analysis">Analysis</a>
+                <a href="#/export">Export</a>
+                <a href="#/compliance">Compliance Log</a>
             </div>
 
             <!-- 統計卡片 -->
@@ -165,6 +179,9 @@ function bindHomeEvents(container) {
  */
 async function loadHomeData(container) {
     try {
+        const snapshot = await loadDemoSnapshot();
+        renderPortfolioSummary(container.querySelector('#portfolio-demo-summary'), snapshot);
+
         // 並行載入資料
         const [stats, recentChars, scraperStatus] = await Promise.all([
             getCharacterStats().catch(() => null),
@@ -182,6 +199,20 @@ async function loadHomeData(container) {
         console.error('Failed to load home data:', error);
         toast.error(t('errors.serverError'));
     }
+}
+
+function renderPortfolioSummary(container, snapshot) {
+    if (!container) return;
+    const counts = snapshot.run.counts;
+    container.innerHTML = `
+        ${renderDemoNotice(snapshot)}
+        ${renderMetricCards([
+            { label: 'Pages', value: counts.pages, help: 'Action API page records' },
+            { label: 'Links', value: counts.links, help: 'Relationship graph inputs' },
+            { label: 'Templates', value: counts.templates, help: 'Infobox extraction hints' },
+            { label: 'Quality warnings', value: counts.qualityWarnings, help: 'Reviewable data issues' },
+        ])}
+    `;
 }
 
 /**

@@ -49,7 +49,7 @@ describe('APIClient', () => {
     test('should initialize with default config', () => {
       const client = new APIClient();
 
-      expect(client.config.baseURL).toBe('/api/v1');
+      expect(client.config.baseURL).toBe('http://localhost:8000/api/v1');
       expect(client.config.timeout).toBe(30000);
       expect(client.config.headers['Content-Type']).toBe('application/json');
     });

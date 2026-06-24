@@ -32,8 +32,14 @@ const NAV_ITEMS = [
                     <path d="M11 4a1 1 0 10-2 0v1a1 1 0 002 0V4zM10 7a1 1 0 011 1v1h2a1 1 0 110 2h-3a1 1 0 01-1-1V8a1 1 0 011-1zM16 9a1 1 0 100 2 1 1 0 000-2zM9 13a1 1 0 011-1h1a1 1 0 110 2v2a1 1 0 11-2 0v-3zM7 11a1 1 0 100-2H4a1 1 0 100 2h3zM17 13a1 1 0 01-1 1h-2a1 1 0 110-2h2a1 1 0 011 1zM16 17a1 1 0 100-2h-3a1 1 0 100 2h3z"/>
                 </svg>`,
                 labelKey: 'nav.scraper'
-            }
-            ,
+            },
+            {
+                path: '/process',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 4a2 2 0 012-2h2.5a2 2 0 011.6.8L10 4h5a2 2 0 012 2v2H3V4zm0 6h14v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5zm3 2a1 1 0 100 2h2a1 1 0 100-2H6zm5 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                </svg>`,
+                labelKey: 'nav.process'
+            },
             {
                 path: '/jobs',
                 icon: `<svg viewBox="0 0 20 20" fill="currentColor">
@@ -43,11 +49,25 @@ const NAV_ITEMS = [
                 labelKey: 'nav.jobs'
             },
             {
+                path: '/campaigns',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h3a2 2 0 012 2v1h5a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2 0v10h10V8H8V5H5zm5 5a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-4 3a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                </svg>`,
+                labelKey: 'nav.campaigns'
+            },
+            {
                 path: '/browse',
                 icon: `<svg viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L14 2.586A2 2 0 0012.586 2H4zm8 1.5V7a1 1 0 001 1h2.5L12 4.5z" clip-rule="evenodd"/>
                 </svg>`,
                 labelKey: 'nav.browse'
+            },
+            {
+                path: '/export',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>`,
+                labelKey: 'nav.export'
             }
         ]
     },
@@ -55,6 +75,13 @@ const NAV_ITEMS = [
         section: 'analytics',
         titleKey: 'nav.analytics',
         items: [
+            {
+                path: '/analysis',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 6a1 1 0 011-1h2a1 1 0 011 1v10a1 1 0 01-1 1H9a1 1 0 01-1-1V6zM14 3a1 1 0 011-1h2a1 1 0 011 1v13a1 1 0 01-1 1h-2a1 1 0 01-1-1V3z"/>
+                </svg>`,
+                labelKey: 'nav.analysis'
+            },
             {
                 path: '/charts',
                 icon: `<svg viewBox="0 0 20 20" fill="currentColor">
@@ -75,6 +102,13 @@ const NAV_ITEMS = [
         section: 'system',
         titleKey: 'settings.title',
         items: [
+            {
+                path: '/compliance',
+                icon: `<svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 1.944l6 2.25V8c0 3.72-2.288 7.05-6 8.056C6.288 15.05 4 11.72 4 8V4.194l6-2.25zM8.707 10.707l4-4a1 1 0 10-1.414-1.414L8 8.586 6.707 7.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0z" clip-rule="evenodd"/>
+                </svg>`,
+                labelKey: 'nav.compliance'
+            },
             {
                 path: '/settings',
                 icon: `<svg viewBox="0 0 20 20" fill="currentColor">
@@ -119,7 +153,8 @@ export function renderSidebar(container) {
 
             html += `
                 <a href="#${item.path}"
-                   class="sidebar__link ${isActive ? 'sidebar__link--active' : ''}">
+                   class="sidebar__link ${isActive ? 'sidebar__link--active' : ''}"
+                   data-tour="nav-${item.path === '/' ? 'home' : item.path.slice(1)}">
                     <span class="sidebar__icon">${item.icon}</span>
                     <span class="sidebar__label">${t(item.labelKey)}</span>
                 </a>

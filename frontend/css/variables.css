@@ -119,25 +119,58 @@
     --z-toast: 800;
 }
 
-/* === 暗色主題 === */
-[data-theme="dark"] {
-    --bg-primary: #111827;
-    --bg-secondary: #1f2937;
-    --bg-tertiary: #374151;
-    --bg-hover: #4b5563;
+/* === 靛藍深色主題 === */
+[data-theme="dark"],
+[data-theme="indigo"] {
+    --color-primary: #8b9cff;
+    --color-primary-hover: #a8b4ff;
+    --color-primary-light: #c7d2fe;
+    --color-primary-dark: #6366f1;
+    --color-secondary: #38bdf8;
+    --color-secondary-hover: #7dd3fc;
 
-    --text-primary: #f9fafb;
-    --text-secondary: #d1d5db;
-    --text-tertiary: #9ca3af;
-    --text-muted: #6b7280;
-    --text-inverse: #111827;
+    --bg-primary: #202a44;
+    --bg-secondary: #182238;
+    --bg-tertiary: #2d3a5d;
+    --bg-hover: #37476d;
 
-    --border-color: #374151;
-    --border-color-light: #4b5563;
-    --border-color-dark: #1f2937;
+    --text-primary: #f8fbff;
+    --text-secondary: #d8e2f7;
+    --text-tertiary: #b6c4e2;
+    --text-muted: #98a9cb;
+    --text-inverse: #111a2d;
 
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    --border-color: #3b4b73;
+    --border-color-light: #475981;
+    --border-color-dark: #142033;
+
+    --shadow-sm: 0 1px 2px 0 rgba(8, 15, 30, 0.28);
+    --shadow-md: 0 10px 24px -16px rgba(8, 15, 30, 0.55);
+    --shadow-lg: 0 18px 36px -20px rgba(8, 15, 30, 0.65);
+    --shadow-xl: 0 24px 48px -22px rgba(8, 15, 30, 0.75);
+}
+
+/* === 海藍主題 === */
+[data-theme="ocean"] {
+    --color-primary: #0f766e;
+    --color-primary-hover: #115e59;
+    --color-primary-light: #5eead4;
+    --color-primary-dark: #134e4a;
+    --color-secondary: #2563eb;
+    --color-secondary-hover: #1d4ed8;
+
+    --bg-primary: #f8fffd;
+    --bg-secondary: #eefbf8;
+    --bg-tertiary: #dff7f1;
+    --bg-hover: #c8eee8;
+
+    --text-primary: #10231f;
+    --text-secondary: #31514b;
+    --text-tertiary: #55736d;
+    --text-muted: #71918a;
+    --text-inverse: #ffffff;
+
+    --border-color: #c9e6df;
+    --border-color-light: #def3ee;
+    --border-color-dark: #9fcac0;
 }

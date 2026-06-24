@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QWidget,
     QMenuBar,
     QMenu,
@@ -39,6 +40,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFileDialog,
     QDialog,
+    QScrollArea,
 )
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot, Qt, QSize
@@ -208,6 +210,11 @@ class MainWindow(QMainWindow):
         db_action.setStatusTip("View and manage scraped data")
         db_action.triggered.connect(self.open_database_viewer)
         tools_menu.addAction(db_action)  # type: ignore
+
+        wiki_db_action = QAction("Wiki DB Viewer", self)
+        wiki_db_action.setStatusTip("Browse local MediaWiki SQLite wiki.db files")
+        wiki_db_action.triggered.connect(self.open_wiki_database_viewer)
+        tools_menu.addAction(wiki_db_action)  # type: ignore
 
         # Log viewer action
         log_action = QAction("Log Viewer", self)
@@ -872,6 +879,19 @@ class MainWindow(QMainWindow):
         except ImportError:
             QMessageBox.information(
                 self, "Feature Not Available", "Database viewer is not yet implemented."
+            )
+
+    def open_wiki_database_viewer(self):
+        """Open local wiki.db viewer."""
+        try:
+            from gui.dialogs.wiki_database_viewer import WikiDatabaseViewer
+
+            viewer = WikiDatabaseViewer(self)
+            viewer.show()
+            self.logger.info("Wiki DB viewer opened")
+        except ImportError as e:
+            QMessageBox.information(
+                self, "Feature Not Available", f"Wiki DB viewer is not available: {e}"
             )
 
     def open_log_viewer(self):

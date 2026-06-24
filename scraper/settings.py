@@ -29,9 +29,8 @@ BOT_NAME = "fandom_scraper"
 SPIDER_MODULES = ["scraper"]
 NEWSPIDER_MODULE = "scraper"
 
-# Obey robots.txt rules
-# Disabled temporarily to bypass Cloudflare bot detection
-ROBOTSTXT_OBEY = False
+# Obey robots.txt rules by default for compliant crawling.
+ROBOTSTXT_OBEY = True
 
 # Configure User Agent
 USER_AGENT = "FandomScraper/1.0 (+https://github.com/user/fandom-scraper)"
@@ -73,7 +72,7 @@ ENABLE_MONGO = os.getenv("ENABLE_MONGO", "false").lower() == "true"
 PROJECT_ROOT = Path(__file__).parent.parent
 
 # AI_WAREHOUSE 3.0 Storage Structure
-FANDOM_DATA_ROOT = Path(os.getenv("FANDOM_DATA_ROOT", "/mnt/data/datasets/fandom"))
+FANDOM_DATA_ROOT = Path(os.getenv("FANDOM_DATA_ROOT", str(PROJECT_ROOT / "storage" / "fandom")))
 
 # Storage paths - will be formatted with anime_name at runtime
 IMAGES_STORE = str(FANDOM_DATA_ROOT / "{anime_name}" / "images")
@@ -131,7 +130,7 @@ DOWNLOADER_MIDDLEWARES = {
     "scrapy.downloadermiddlewares.httpcache.HttpCacheMiddleware": 900,
 }
 
-# Playwright settings for JavaScript rendering (bypass Cloudflare)
+# Optional Playwright settings for JavaScript-rendered pages.
 DOWNLOAD_HANDLERS = {
     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
@@ -163,7 +162,7 @@ HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
 # Logging Configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # 不設定 LOG_FILE，讓日誌輸出到 stdout（終端）
-# LOG_FILE = str(PROJECT_ROOT / "logs" / "scrapy.log")
+LOG_FILE = os.getenv("SCRAPY_LOG_FILE", "")
 LOG_ENCODING = "utf-8"
 LOG_STDOUT = True
 LOG_ENABLED = True
@@ -193,7 +192,7 @@ CLOSESPIDER_ITEMCOUNT = 0  # No limit on items (set to number to limit)
 CLOSESPIDER_PAGECOUNT = 0  # No limit on pages
 CLOSESPIDER_TIMEOUT = 0  # No timeout (set to seconds for timeout)
 
-# Request fingerprinting
+# Scrapy request fingerprinting implementation
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 
 # Compression
@@ -266,8 +265,8 @@ class TestingSettings:
     RANDOMIZE_DOWNLOAD_DELAY = False
     CONCURRENT_REQUESTS = 64
 
-    # Disable unnecessary features
-    ROBOTSTXT_OBEY = False
+    # Keep robots.txt enabled during tests; mock network behavior where needed.
+    ROBOTSTXT_OBEY = True
     HTTPCACHE_ENABLED = True
 
     # Test-specific pipelines
@@ -440,11 +439,10 @@ DOWNLOAD_TIMEOUT = 180
 DOWNLOAD_MAXSIZE = 1073741824  # 1GB
 DOWNLOAD_WARNSIZE = 33554432  # 32MB
 
-# Proxy settings (if needed)
-# DOWNLOADER_MIDDLEWARES['scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware'] = 110
-# HTTPPROXY_ENABLED = True
+# Proxy rotation is intentionally not configured. The scraper should slow down
+# or stop on access restrictions instead of switching network identity.
 
-# Ban avoidance settings
+# Polite crawling settings
 RANDOMIZE_DOWNLOAD_DELAY = True
 AUTOTHROTTLE_ENABLED = True
 AUTOTHROTTLE_START_DELAY = 1
@@ -478,15 +476,23 @@ QUALITY_SETTINGS = {
     },
 }
 
-# Anti-ban settings
-ANTI_BAN_SETTINGS = {
+# Polite request handling settings
+POLITE_CRAWLING_SETTINGS = {
     "user_agent_rotation": True,
-    "proxy_rotation": False,
     "delay_randomization": True,
     "respect_robots_txt": True,
     "max_requests_per_minute": 30,
-    "session_rotation_interval": 100,  # requests
+    "session_cookie_reuse": True,
 }
+
+# Preferred Scrapy setting keys for polite request handling.
+POLITE_CRAWLING_REQUESTS_PER_MINUTE = 30
+POLITE_CRAWLING_BEHAVIOR_MIMICKING = False
+
+# Backward-compatible aliases for older imports/configs.
+ANTI_BAN_SETTINGS = POLITE_CRAWLING_SETTINGS
+ANTI_BAN_REQUESTS_PER_MINUTE = POLITE_CRAWLING_REQUESTS_PER_MINUTE
+ANTI_BAN_BEHAVIOR_MIMICKING = POLITE_CRAWLING_BEHAVIOR_MIMICKING
 
 # Performance monitoring settings
 PERFORMANCE_SETTINGS = {
@@ -541,7 +547,7 @@ def configure_for_environment():
             {
                 "LOG_LEVEL": "WARNING",
                 "DOWNLOAD_DELAY": 0,
-                "ROBOTSTXT_OBEY": False,
+                "ROBOTSTXT_OBEY": True,
                 "HTTPCACHE_ENABLED": True,
                 "MONGO_DATABASE": "fandom_scraper_test",
             }
@@ -570,7 +576,9 @@ def validate_settings():
     errors = []
 
     # Check required directories exist
-    required_dirs = [IMAGES_STORE, FILES_STORE, Path(LOG_FILE).parent]
+    required_dirs = [IMAGES_STORE, FILES_STORE]
+    if LOG_FILE:
+        required_dirs.append(Path(LOG_FILE).parent)
     for dir_path in required_dirs:
         if not Path(dir_path).exists():
             try:
@@ -588,7 +596,10 @@ def validate_settings():
 
     # Validate pipeline order
     pipeline_order = sorted(ITEM_PIPELINES.values())
-    if pipeline_order != list(range(100, 600, 100)):
+    expected_order = [100, 200, 300, 400, 600]
+    if ENABLE_MONGO:
+        expected_order.insert(4, 500)
+    if pipeline_order != expected_order:
         errors.append("Pipeline priorities should be in increments of 100")
 
     if errors:
@@ -690,14 +701,8 @@ MIDDLEWARE_SETTINGS = {
         "agents_file": "config/user_agents.txt",
         "fallback_agent": USER_AGENT,
     },
-    "proxy_rotation": {
-        "enabled": False,
-        "proxy_file": "config/proxies.txt",
-        "retry_with_different_proxy": True,
-    },
     "session_rotation": {
-        "enabled": True,
-        "rotation_interval": 100,  # requests
-        "clear_cookies": True,
+        "enabled": False,
+        "reuse_cookies": True,
     },
 }

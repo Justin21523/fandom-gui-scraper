@@ -14,14 +14,14 @@ except Exception:  # pragma: no cover
     REDIS_AVAILABLE = False
 
 from api.jobs.events import EVENT_CHANNEL
+from api.jobs.queue import job_queue_enabled
 from api.websocket.manager import manager
 
 logger = logging.getLogger(__name__)
 
 
 async def run_event_listener(stop_event: asyncio.Event) -> None:
-    if not REDIS_AVAILABLE:
-        # No Redis installed (e.g. unit test environment)
+    if not job_queue_enabled() or not REDIS_AVAILABLE:
         await stop_event.wait()
         return
     url = os.getenv("REDIS_URL", "redis://localhost:6379/0")

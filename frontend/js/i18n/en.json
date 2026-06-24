@@ -27,18 +27,190 @@
         "logout": "Logout",
         "login": "Login",
         "noData": "No data",
-        "loadMore": "Load more"
+        "loadMore": "Load more",
+        "retry": "Retry",
+        "clear": "Clear",
+        "download": "Download",
+        "configure": "Configure",
+        "queued": "Queued",
+        "sampleDemo": "Sample demo",
+        "liveCrawl": "Live crawl"
+    },
+    "status": {
+        "passed": "Passed",
+        "ready": "Ready",
+        "completed": "Completed",
+        "finished": "Finished",
+        "skipped": "Skipped",
+        "partial": "Partial",
+        "stopped": "Stopped",
+        "running": "Running",
+        "warning": "Warning",
+        "planned": "Planned",
+        "failed": "Failed",
+        "error": "Error",
+        "queued": "Queued",
+        "idle": "Idle"
     },
     "nav": {
         "home": "Home",
         "characters": "Characters",
         "scraper": "Scraper",
         "jobs": "Jobs",
+        "campaigns": "Campaigns",
         "browse": "Browse",
+        "process": "Process",
+        "analysis": "Analysis",
+        "export": "Export",
+        "compliance": "Compliance",
         "charts": "Charts",
         "media": "Media",
         "settings": "Settings",
         "help": "Help"
+    },
+    "portfolio": {
+        "loadingPreparing": "Preparing live data, charts, and workflow state...",
+        "notice": {
+            "live": "Live API snapshot",
+            "demo": "Demo sample dataset"
+        },
+        "actions": {
+            "loadSample": "Load Sample Demo",
+            "runLive": "Run Live Campaign",
+            "runPreset": "Run Selected Preset",
+            "refreshStatus": "Refresh Status",
+            "browse": "Browse",
+            "openErrors": "Open errors dataset",
+            "viewResults": "View results"
+        },
+        "metrics": {
+            "wikis": "Wikis",
+            "wikisHelp": "Public Fandom sites",
+            "pages": "Pages",
+            "pagesHelp": "SQLite page records",
+            "links": "Links",
+            "linksHelp": "Network edge inputs",
+            "errors": "Errors",
+            "errorsHelp": "Recorded crawl issues"
+        },
+        "datasets": {
+            "pages": "Pages",
+            "categories": "Categories",
+            "links": "Links",
+            "templates": "Templates",
+            "images": "Images",
+            "revisions": "Revisions",
+            "infoboxes": "Infoboxes",
+            "errors": "Errors",
+            "checkpoints": "Checkpoints"
+        },
+        "campaigns": {
+            "title": "Campaigns",
+            "subtitle": "Run and inspect multi-wiki Fandom campaigns across public MediaWiki sites.",
+            "selector": "Campaign",
+            "searchWikis": "Search wikis",
+            "status": "Status",
+            "wikiTable": "Wiki outputs",
+            "executionEvents": "Execution events",
+            "errorDrilldown": "Error drill-down",
+            "noCampaign": "No campaign found. Load the sample demo or run a live campaign.",
+            "noErrors": "No recorded crawl errors or warning events in this campaign.",
+            "queued": "Campaign queued. The page will refresh while it runs.",
+            "unavailable": "Campaign data is unavailable.",
+            "eventsCount": "{{count}} events",
+            "sampleLoaded": "Sample demo loaded from local data.",
+            "errorRecords": "{{count}} crawl error records",
+            "warningEvents": "Warning and stop events",
+            "preset": "Demo preset",
+            "mode": "Mode",
+            "defaults": "Defaults",
+            "defaultSummary": "{{pages}} pages · {{delay}}s delay · {{html}} HTML fallback pages",
+            "offlineTarget": "Bundled offline sample",
+            "liveOptions": "Live campaign options"
+        },
+        "browse": {
+            "title": "Browse",
+            "subtitle": "Browse pages, categories, links, templates, images, revisions, infobox-like data, errors, and checkpoints.",
+            "runs": "Runs",
+            "datasetBrowser": "Dataset browser",
+            "selectRun": "Select a run",
+            "files": "Files",
+            "fileHelp": "Select a file to preview the first records.",
+            "preview": "Preview",
+            "manifest": "manifest.json",
+            "wikiDb": "SQLite wiki.db",
+            "dataset": "{{dataset}} dataset",
+            "matchingRows": "{{count}} matching rows",
+            "searchDataset": "Search {{dataset}}",
+            "noRows": "No rows match the current filter.",
+            "noRelationRows": "No rows",
+            "selectedPageDetail": "Selected page detail",
+            "pageId": "Page ID",
+            "namespace": "Namespace",
+            "length": "Length",
+            "touched": "Touched",
+            "demoRun": "Demo sample dataset",
+            "demoNotice": "Live jobs were not available, so this browser is showing a small public Fandom workflow sample.",
+            "loadFailed": "Failed to load data",
+            "wikiDbUnavailable": "wiki.db unavailable"
+        },
+        "analysis": {
+            "title": "Analysis",
+            "subtitle": "Category, text, relationship network, and data quality views for a wiki crawl.",
+            "topCategory": "Top category",
+            "topTerm": "Top term",
+            "networkNodes": "Network nodes",
+            "qualityWarnings": "Quality warnings",
+            "perWiki": "Per-wiki comparison",
+            "categoryAnalysis": "Category analysis",
+            "textAnalysis": "Text analysis",
+            "relationshipNetwork": "Relationship network",
+            "dataQuality": "Data quality",
+            "connectedEdges": "Connected edges",
+            "noData": "No data available.",
+            "noPerWiki": "No per-wiki analysis available.",
+            "noNetwork": "No sampled links available.",
+            "noEdges": "No visible edges for this selection.",
+            "liveCampaign": "Live campaign analysis",
+            "liveWikiDb": "Live wiki.db analysis",
+            "showingCampaign": "Showing aggregate analysis from campaign {{id}}.",
+            "showingJob": "Showing SQLite analysis from job {{id}}."
+        },
+        "process": {
+            "title": "Crawler process",
+            "subtitle": "A transparent view of URL normalization, MediaWiki Action API usage, fallback parsing, checkpointing, and exports.",
+            "configureJob": "Configure a job",
+            "runContext": "Run context",
+            "apiPolicy": "API-first policy",
+            "apiPolicyText": "The crawler prefers MediaWiki Action API endpoints for structured data. HTML parsing is reserved for missing infobox-like fields or presentation-only details.",
+            "timeline": "Execution timeline"
+        },
+        "export": {
+            "title": "Export center",
+            "subtitle": "SQLite, CSV, JSON, and Parquet export readiness for downstream analysis and portfolio review.",
+            "manifest": "Export manifest",
+            "datasets": "SQLite dataset exports",
+            "artifacts": "Artifacts",
+            "useCases": "Downstream use cases",
+            "parquetRequired": "pyarrow required",
+            "liveNotice": "Download CSV/JSON datasets from job {{id}}. Parquet is enabled when pyarrow is installed.",
+            "dataset": "Dataset",
+            "rows": "Rows",
+            "sqliteUse": "Local querying, resumable state inspection, and compact portfolio demos.",
+            "jsonUse": "Streaming-friendly records for app integration and previews.",
+            "csvUse": "Spreadsheet review and simple data-quality audits.",
+            "parquetUse": "Columnar analytics target for larger wiki datasets."
+        },
+        "compliance": {
+            "title": "Compliance log",
+            "subtitle": "Robots checks, descriptive User-Agent, rate limiting, retry/backoff, and stop-on-restriction behavior.",
+            "events": "Compliance events",
+            "nonGoals": "Explicit non-goals",
+            "robots": "Robots policy",
+            "rateLimit": "Rate limit",
+            "retryStyle": "Retry style",
+            "userAgent": "User-Agent"
+        }
     },
     "home": {
         "title": "Dashboard",
@@ -138,6 +310,75 @@
             "anime": "Anime",
             "count": "Count",
             "duration": "Duration"
+        },
+        "universal": {
+            "title": "Universal Fandom Scraper",
+            "subtitle": "Configure a compliant Fandom or MediaWiki crawl with API-first data collection.",
+            "newJob": "New scrape job",
+            "inputSource": "Input source",
+            "wikiNameSearch": "Wiki name search",
+            "urlEndpoint": "URL / API endpoint",
+            "wikiTopicName": "Wiki or topic name",
+            "topic": "Topic",
+            "topicPlaceholder": "Example: One Piece",
+            "searchResults": "Search results",
+            "urlLabel": "Fandom URL or MediaWiki API endpoint",
+            "urlHelp": "The backend will normalize the wiki base URL and api.php endpoint.",
+            "contentScope": "Content scope",
+            "pagesCharacters": "Pages / Characters",
+            "categoriesEpisodes": "Categories / Episodes",
+            "imagesGalleries": "Images / Galleries",
+            "linksChapters": "Links / Chapters",
+            "limits": "Per-collection limits",
+            "maxPages": "Max pages / characters",
+            "maxCategories": "Max categories / episodes",
+            "maxImages": "Max images",
+            "maxLinks": "Max links / chapters",
+            "noLimitHelp": "0 = no limit",
+            "complianceExport": "Compliance and export options",
+            "requestDelay": "Request delay (seconds)",
+            "retries": "Retries",
+            "runtimeControls": "Runtime controls",
+            "usePlaywright": "Use Playwright from the start for JavaScript-rendered pages",
+            "usePlaywrightDetail": "Use Playwright for detail pages that require JavaScript rendering",
+            "downloadImages": "Download images (storage heavy, off by default)",
+            "compressJson": "Compress JSON exports (.gz)",
+            "jsonExportMode": "JSON export mode",
+            "exportJsonl": "jsonl (append records to fewer files)",
+            "exportPerItem": "per_item (one file per record, easier to inspect)",
+            "exportModeHelp": "Recommended: jsonl + gzip for larger wiki crawls.",
+            "startCrawl": "Start crawl",
+            "pause": "Pause",
+            "stop": "Stop",
+            "resume": "Resume",
+            "recentRuns": "Recent runs",
+            "recentJobs": "Recent jobs",
+            "crawlProgress": "Crawl progress",
+            "liveLogs": "Live logs",
+            "waiting": "Waiting to start...",
+            "enterTopic": "Enter a wiki or topic name.",
+            "searching": "Searching...",
+            "resultsFound": "{{count}} results found.",
+            "searchFailed": "Search failed: {{message}}",
+            "selectWikiFirst": "Search and select a wiki first.",
+            "enterWikiUrl": "Enter a wiki URL.",
+            "selectScope": "Select at least one content scope.",
+            "started": "Universal Scraper started.",
+            "startedJob": "Universal Scraper started (Job: {{id}})",
+            "startFailed": "Start failed: {{message}}",
+            "noJobs": "No jobs yet.",
+            "switchJob": "Switch",
+            "jobSelected": "Selected job {{id}}.",
+            "loadFailed": "Load failed.",
+            "resumed": "Resumed.",
+            "paused": "Paused.",
+            "stopped": "Stopped.",
+            "completed": "Crawl completed. {{count}} items finished.",
+            "disabled": "Disabled",
+            "noHistory": "No crawl history yet.",
+            "completedCount": "{{count}} completed",
+            "failedCount": "{{count}} failed",
+            "historyFailed": "Failed to load crawl history."
         }
     },
     "charts": {
@@ -170,8 +411,11 @@
             "language": "Language",
             "theme": "Theme",
             "lightTheme": "Light",
-            "darkTheme": "Dark",
-            "autoTheme": "Auto (System)"
+            "darkTheme": "Indigo",
+            "oceanTheme": "Ocean",
+            "autoTheme": "Auto (System)",
+            "languageDescription": "Choose the interface language",
+            "themeDescription": "Choose a readable color theme"
         },
         "api": {
             "title": "API Settings",
@@ -214,5 +458,69 @@
         "last": "Last",
         "prev": "Previous",
         "next": "Next"
+    },
+    "tour": {
+        "title": "Portfolio Demo Guide",
+        "launcher": "Guide",
+        "open": "Open portfolio demo guide",
+        "eyebrow": "Step {{current}} / {{total}}",
+        "skip": "Skip",
+        "finish": "Finish",
+        "restart": "Restart guide",
+        "targetMissing": "This section is still loading or has no data right now. You can continue to the next step.",
+        "steps": {
+            "campaigns": {
+                "title": "Start with Campaigns",
+                "body": "This is the portfolio entry point: inspect multi-wiki crawl status, dataset counts, error summaries, and recent execution events."
+            },
+            "preset": {
+                "title": "Choose offline or live demo",
+                "body": "For interviews, start with the fast offline demo so the flow does not depend on external network state. A compliant live crawl preset remains available."
+            },
+            "events": {
+                "title": "Track the crawler pipeline",
+                "body": "The event timeline shows URL normalization, robots checks, API discovery, page fetches, checkpoints, and export progress."
+            },
+            "scraperSource": {
+                "title": "Create a new scrape job",
+                "body": "Users can enter a Fandom wiki name, full wiki URL, or MediaWiki API endpoint. The system normalizes the source automatically."
+            },
+            "scraperCompliance": {
+                "title": "Compliance and runtime options",
+                "body": "Configure rate limit, retry, JSON export, and Playwright fallback. CAPTCHA solving, proxy pools, and fingerprint bypass are intentionally excluded."
+            },
+            "scraperProgress": {
+                "title": "Runtime progress and loading states",
+                "body": "After a job starts, progress, speed, ETA, category completion, and logs update so the full pipeline is visible."
+            },
+            "process": {
+                "title": "Full crawler process",
+                "body": "The Process page breaks the API-first workflow into readable steps, including fallback, checkpoint, and SQLite write context."
+            },
+            "browseRuns": {
+                "title": "Choose a crawl run",
+                "body": "Browse reads real job outputs or bundled demo data so users can switch runs and inspect the data source."
+            },
+            "browseDatasets": {
+                "title": "Browse wiki.db datasets",
+                "body": "Search and paginate pages, categories, links, templates, images, revisions, infoboxes, and errors."
+            },
+            "analysisNetwork": {
+                "title": "Relationship network visualization",
+                "body": "Analysis turns wiki links into a network graph to show the analytical value after data engineering."
+            },
+            "analysisQuality": {
+                "title": "Data quality checks",
+                "body": "Quality panels surface missing fields, duplicates, warnings, and non-blocking issues so the pipeline can evaluate trustworthiness."
+            },
+            "export": {
+                "title": "Export center",
+                "body": "Export shows SQLite, CSV, JSON, and Parquet status. If Parquet support is unavailable, the UI explains it without crashing."
+            },
+            "compliance": {
+                "title": "Compliance log",
+                "body": "Compliance Log records robots, rate limits, 403/429 responses, stop reasons, and non-goals for a responsible scraper platform."
+            }
+        }
     }
 }
