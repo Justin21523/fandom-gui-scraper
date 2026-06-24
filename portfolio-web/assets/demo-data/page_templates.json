@@ -1,0 +1,38 @@
+[
+  {
+    "page_id": 1,
+    "template_title": "Template:Character",
+    "template_ns": 10,
+    "raw_json": "{\"ns\": 10, \"title\": \"Template:Character\"}"
+  },
+  {
+    "page_id": 1,
+    "template_title": "Template:Infobox character",
+    "template_ns": 10,
+    "raw_json": "{\"ns\": 10, \"title\": \"Template:Infobox character\"}"
+  },
+  {
+    "page_id": 2,
+    "template_title": "Template:Character",
+    "template_ns": 10,
+    "raw_json": "{\"ns\": 10, \"title\": \"Template:Character\"}"
+  },
+  {
+    "page_id": 2,
+    "template_title": "Template:Infobox character",
+    "template_ns": 10,
+    "raw_json": "{\"ns\": 10, \"title\": \"Template:Infobox character\"}"
+  },
+  {
+    "page_id": 3,
+    "template_title": "Template:Character",
+    "template_ns": 10,
+    "raw_json": "{\"ns\": 10, \"title\": \"Template:Character\"}"
+  },
+  {
+    "page_id": 3,
+    "template_title": "Template:Infobox character",
+    "template_ns": 10,
+    "raw_json": "{\"ns\": 10, \"title\": \"Template:Infobox character\"}"
+  }
+]

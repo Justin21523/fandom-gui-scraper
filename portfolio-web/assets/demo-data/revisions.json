@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "page_id": 1,
+    "revid": 9001,
+    "parentid": 8999,
+    "timestamp": "2026-01-01T00:00:00Z",
+    "user": "DemoEditor",
+    "comment": "Demo snapshot",
+    "size": 4821,
+    "sha1": "demo-luffy",
+    "raw_json": "{\"comment\": \"Demo snapshot\", \"parentid\": 8999, \"revid\": 9001, \"sha1\": \"demo-luffy\", \"size\": 4821, \"timestamp\": \"2026-01-01T00:00:00Z\", \"user\": \"DemoEditor\"}",
+    "updated_at": "2026-06-24T14:04:51.214612+00:00"
+  },
+  {
+    "id": 2,
+    "page_id": 2,
+    "revid": 9002,
+    "parentid": 9000,
+    "timestamp": "2026-01-01T00:05:00Z",
+    "user": "DemoEditor",
+    "comment": "Demo snapshot",
+    "size": 3910,
+    "sha1": "demo-zoro",
+    "raw_json": "{\"comment\": \"Demo snapshot\", \"parentid\": 9000, \"revid\": 9002, \"sha1\": \"demo-zoro\", \"size\": 3910, \"timestamp\": \"2026-01-01T00:05:00Z\", \"user\": \"DemoEditor\"}",
+    "updated_at": "2026-06-24T14:04:51.229754+00:00"
+  },
+  {
+    "id": 3,
+    "page_id": 3,
+    "revid": 9003,
+    "parentid": 9001,
+    "timestamp": "2026-01-01T00:10:00Z",
+    "user": "DemoEditor",
+    "comment": "Demo snapshot",
+    "size": 3640,
+    "sha1": "demo-nami",
+    "raw_json": "{\"comment\": \"Demo snapshot\", \"parentid\": 9001, \"revid\": 9003, \"sha1\": \"demo-nami\", \"size\": 3640, \"timestamp\": \"2026-01-01T00:10:00Z\", \"user\": \"DemoEditor\"}",
+    "updated_at": "2026-06-24T14:04:51.243025+00:00"
+  }
+]
