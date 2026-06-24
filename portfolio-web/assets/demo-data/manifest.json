@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "job_id": "demo-onepiece-action-api-001",
+  "status": "finished",
+  "created_at": "2026-06-24T14:04:51+00:00",
+  "anime_name": "One Piece",
+  "wiki_url": "https://onepiece.fandom.com",
+  "api_endpoint": "https://onepiece.fandom.com/api.php",
+  "mode": "offline-demo",
+  "compliance": {
+    "robots": "allowed",
+    "rate_limit_seconds": 1.0,
+    "user_agent": "fandom-gui-scraper demo",
+    "blocked_requests": 0
+  },
+  "outputs": {
+    "pages_jsonl": "data/pages.jsonl",
+    "wiki_db": "wiki.db"
+  },
+  "wiki_db": {
+    "path": "wiki.db",
+    "tables": [
+      "pages",
+      "page_categories",
+      "page_links",
+      "page_templates",
+      "page_images",
+      "revisions",
+      "page_infobox_fields"
+    ]
+  },
+  "counts": {
+    "pages": 3,
+    "categories": 9,
+    "links": 9,
+    "templates": 6,
+    "images": 3,
+    "revisions": 3,
+    "infoboxes": 9
+  },
+  "output_root": "sample_data/jobs/demo-onepiece-action-api-001"
+}

@@ -1,0 +1,10 @@
+page_id,field_name,field_value,source,raw_json
+1,Affiliation,Straw Hat Pirates,demo_html_infobox,"{""field_name"": ""Affiliation"", ""field_value"": ""Straw Hat Pirates"", ""source"": ""demo_html_infobox""}"
+1,Occupation,Pirate Captain,demo_html_infobox,"{""field_name"": ""Occupation"", ""field_value"": ""Pirate Captain"", ""source"": ""demo_html_infobox""}"
+1,Origin,Foosha Village,demo_html_infobox,"{""field_name"": ""Origin"", ""field_value"": ""Foosha Village"", ""source"": ""demo_html_infobox""}"
+2,Affiliation,Straw Hat Pirates,demo_html_infobox,"{""field_name"": ""Affiliation"", ""field_value"": ""Straw Hat Pirates"", ""source"": ""demo_html_infobox""}"
+2,Occupation,Swordsman,demo_html_infobox,"{""field_name"": ""Occupation"", ""field_value"": ""Swordsman"", ""source"": ""demo_html_infobox""}"
+2,Weapon,Three swords,demo_html_infobox,"{""field_name"": ""Weapon"", ""field_value"": ""Three swords"", ""source"": ""demo_html_infobox""}"
+3,Affiliation,Straw Hat Pirates,demo_html_infobox,"{""field_name"": ""Affiliation"", ""field_value"": ""Straw Hat Pirates"", ""source"": ""demo_html_infobox""}"
+3,Occupation,Navigator,demo_html_infobox,"{""field_name"": ""Occupation"", ""field_value"": ""Navigator"", ""source"": ""demo_html_infobox""}"
+3,Goal,Map the world,demo_html_infobox,"{""field_name"": ""Goal"", ""field_value"": ""Map the world"", ""source"": ""demo_html_infobox""}"

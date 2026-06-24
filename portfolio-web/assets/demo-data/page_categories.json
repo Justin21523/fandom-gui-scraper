@@ -1,0 +1,47 @@
+[
+  {
+    "page_id": 1,
+    "category_title": "Category:Characters",
+    "raw_json": "{\"title\": \"Category:Characters\"}"
+  },
+  {
+    "page_id": 1,
+    "category_title": "Category:Pirates",
+    "raw_json": "{\"title\": \"Category:Pirates\"}"
+  },
+  {
+    "page_id": 1,
+    "category_title": "Category:Straw Hat Pirates",
+    "raw_json": "{\"title\": \"Category:Straw Hat Pirates\"}"
+  },
+  {
+    "page_id": 2,
+    "category_title": "Category:Characters",
+    "raw_json": "{\"title\": \"Category:Characters\"}"
+  },
+  {
+    "page_id": 2,
+    "category_title": "Category:Pirates",
+    "raw_json": "{\"title\": \"Category:Pirates\"}"
+  },
+  {
+    "page_id": 2,
+    "category_title": "Category:Swordsmen",
+    "raw_json": "{\"title\": \"Category:Swordsmen\"}"
+  },
+  {
+    "page_id": 3,
+    "category_title": "Category:Characters",
+    "raw_json": "{\"title\": \"Category:Characters\"}"
+  },
+  {
+    "page_id": 3,
+    "category_title": "Category:Pirates",
+    "raw_json": "{\"title\": \"Category:Pirates\"}"
+  },
+  {
+    "page_id": 3,
+    "category_title": "Category:Navigators",
+    "raw_json": "{\"title\": \"Category:Navigators\"}"
+  }
+]

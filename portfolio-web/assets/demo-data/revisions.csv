@@ -1,0 +1,4 @@
+id,page_id,revid,parentid,timestamp,user,comment,size,sha1,raw_json,updated_at
+1,1,9001,8999,2026-01-01T00:00:00Z,DemoEditor,Demo snapshot,4821,demo-luffy,"{""comment"": ""Demo snapshot"", ""parentid"": 8999, ""revid"": 9001, ""sha1"": ""demo-luffy"", ""size"": 4821, ""timestamp"": ""2026-01-01T00:00:00Z"", ""user"": ""DemoEditor""}",2026-06-24T14:04:51.214612+00:00
+2,2,9002,9000,2026-01-01T00:05:00Z,DemoEditor,Demo snapshot,3910,demo-zoro,"{""comment"": ""Demo snapshot"", ""parentid"": 9000, ""revid"": 9002, ""sha1"": ""demo-zoro"", ""size"": 3910, ""timestamp"": ""2026-01-01T00:05:00Z"", ""user"": ""DemoEditor""}",2026-06-24T14:04:51.229754+00:00
+3,3,9003,9001,2026-01-01T00:10:00Z,DemoEditor,Demo snapshot,3640,demo-nami,"{""comment"": ""Demo snapshot"", ""parentid"": 9001, ""revid"": 9003, ""sha1"": ""demo-nami"", ""size"": 3640, ""timestamp"": ""2026-01-01T00:10:00Z"", ""user"": ""DemoEditor""}",2026-06-24T14:04:51.243025+00:00

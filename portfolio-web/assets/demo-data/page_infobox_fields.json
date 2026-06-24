@@ -1,0 +1,65 @@
+[
+  {
+    "page_id": 1,
+    "field_name": "Affiliation",
+    "field_value": "Straw Hat Pirates",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Affiliation\", \"field_value\": \"Straw Hat Pirates\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 1,
+    "field_name": "Occupation",
+    "field_value": "Pirate Captain",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Occupation\", \"field_value\": \"Pirate Captain\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 1,
+    "field_name": "Origin",
+    "field_value": "Foosha Village",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Origin\", \"field_value\": \"Foosha Village\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 2,
+    "field_name": "Affiliation",
+    "field_value": "Straw Hat Pirates",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Affiliation\", \"field_value\": \"Straw Hat Pirates\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 2,
+    "field_name": "Occupation",
+    "field_value": "Swordsman",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Occupation\", \"field_value\": \"Swordsman\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 2,
+    "field_name": "Weapon",
+    "field_value": "Three swords",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Weapon\", \"field_value\": \"Three swords\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 3,
+    "field_name": "Affiliation",
+    "field_value": "Straw Hat Pirates",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Affiliation\", \"field_value\": \"Straw Hat Pirates\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 3,
+    "field_name": "Occupation",
+    "field_value": "Navigator",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Occupation\", \"field_value\": \"Navigator\", \"source\": \"demo_html_infobox\"}"
+  },
+  {
+    "page_id": 3,
+    "field_name": "Goal",
+    "field_value": "Map the world",
+    "source": "demo_html_infobox",
+    "raw_json": "{\"field_name\": \"Goal\", \"field_value\": \"Map the world\", \"source\": \"demo_html_infobox\"}"
+  }
+]

@@ -1,0 +1,39 @@
+{
+  "pages": {
+    "count": 3,
+    "exported_rows": 3
+  },
+  "page_categories": {
+    "count": 9,
+    "exported_rows": 9
+  },
+  "page_links": {
+    "count": 9,
+    "exported_rows": 9
+  },
+  "page_templates": {
+    "count": 6,
+    "exported_rows": 6
+  },
+  "page_images": {
+    "count": 3,
+    "exported_rows": 3
+  },
+  "revisions": {
+    "count": 3,
+    "exported_rows": 3
+  },
+  "page_infobox_fields": {
+    "count": 9,
+    "exported_rows": 9
+  },
+  "crawl_errors": {
+    "count": 0,
+    "exported_rows": 0
+  },
+  "source": {
+    "wiki": "One Piece Wiki demo sample",
+    "mode": "offline reproducible sample",
+    "database": "wiki.db"
+  }
+}
