@@ -17,6 +17,8 @@ venv/
 logs/
 storage/
 reports/
+sample_data/**/*.db-shm
+sample_data/**/*.db-wal
 
 # Local caches / editor
 .cache/

@@ -1,0 +1,956 @@
+{
+  "schema_version": "1.0",
+  "campaign_id": "portfolio-smoke",
+  "status": "finished",
+  "started_at": "2026-06-24T14:51:37+00:00",
+  "finished_at": "2026-06-24T14:51:37+00:00",
+  "targets": [
+    "https://onepiece.fandom.com",
+    "https://stardewvalley.fandom.com",
+    "https://fallout.fandom.com",
+    "https://starwars.fandom.com",
+    "https://zelda.fandom.com"
+  ],
+  "config": {
+    "page_limit": 50,
+    "batch_size": 25,
+    "rate_delay": 1.0,
+    "parse_html_limit": 10,
+    "respect_robots": true
+  },
+  "summary": {
+    "pages": 243,
+    "categories": 263,
+    "links": 6587,
+    "templates": 1954,
+    "images": 913,
+    "revisions": 243,
+    "infoboxes": 6,
+    "errors": 0
+  },
+  "jobs": [
+    {
+      "job_id": "portfolio-smoke-onepiece",
+      "wiki_url": "https://onepiece.fandom.com",
+      "api_endpoint": "https://onepiece.fandom.com/api.php",
+      "status": "finished",
+      "counts": {
+        "wikis": 1,
+        "crawl_runs": 3,
+        "pages": 47,
+        "categories": 0,
+        "links": 1935,
+        "templates": 0,
+        "images": 0,
+        "infoboxes": 0,
+        "revisions": 47,
+        "errors": 0,
+        "checkpoints": 1
+      },
+      "error": null,
+      "output_root": "sample_data/jobs/portfolio-smoke-onepiece",
+      "wiki_db_path": "sample_data/jobs/portfolio-smoke-onepiece/wiki.db"
+    },
+    {
+      "job_id": "portfolio-smoke-stardewvalley",
+      "wiki_url": "https://stardewvalley.fandom.com",
+      "api_endpoint": "https://stardewvalley.fandom.com/api.php",
+      "status": "finished",
+      "counts": {
+        "wikis": 1,
+        "crawl_runs": 3,
+        "pages": 50,
+        "categories": 70,
+        "links": 1420,
+        "templates": 46,
+        "images": 694,
+        "infoboxes": 6,
+        "revisions": 50,
+        "errors": 0,
+        "checkpoints": 1
+      },
+      "error": null,
+      "output_root": "sample_data/jobs/portfolio-smoke-stardewvalley",
+      "wiki_db_path": "sample_data/jobs/portfolio-smoke-stardewvalley/wiki.db"
+    },
+    {
+      "job_id": "portfolio-smoke-fallout",
+      "wiki_url": "https://fallout.fandom.com",
+      "api_endpoint": "https://fallout.fandom.com/api.php",
+      "status": "finished",
+      "counts": {
+        "wikis": 1,
+        "crawl_runs": 3,
+        "pages": 46,
+        "categories": 8,
+        "links": 948,
+        "templates": 105,
+        "images": 23,
+        "infoboxes": 0,
+        "revisions": 46,
+        "errors": 0,
+        "checkpoints": 1
+      },
+      "error": null,
+      "output_root": "sample_data/jobs/portfolio-smoke-fallout",
+      "wiki_db_path": "sample_data/jobs/portfolio-smoke-fallout/wiki.db"
+    },
+    {
+      "job_id": "portfolio-smoke-starwars",
+      "wiki_url": "https://starwars.fandom.com",
+      "api_endpoint": "https://starwars.fandom.com/api.php",
+      "status": "finished",
+      "counts": {
+        "wikis": 1,
+        "crawl_runs": 1,
+        "pages": 50,
+        "categories": 134,
+        "links": 638,
+        "templates": 524,
+        "images": 147,
+        "infoboxes": 0,
+        "revisions": 50,
+        "errors": 0,
+        "checkpoints": 1
+      },
+      "error": null,
+      "output_root": "sample_data/jobs/portfolio-smoke-starwars",
+      "wiki_db_path": "sample_data/jobs/portfolio-smoke-starwars/wiki.db"
+    },
+    {
+      "job_id": "portfolio-smoke-zelda",
+      "wiki_url": "https://zelda.fandom.com",
+      "api_endpoint": "https://zelda.fandom.com/api.php",
+      "status": "finished",
+      "counts": {
+        "wikis": 1,
+        "crawl_runs": 1,
+        "pages": 50,
+        "categories": 51,
+        "links": 1646,
+        "templates": 1279,
+        "images": 49,
+        "infoboxes": 0,
+        "revisions": 50,
+        "errors": 0,
+        "checkpoints": 1
+      },
+      "error": null,
+      "output_root": "sample_data/jobs/portfolio-smoke-zelda",
+      "wiki_db_path": "sample_data/jobs/portfolio-smoke-zelda/wiki.db"
+    }
+  ],
+  "analysis": {
+    "overview": {
+      "pages": 243,
+      "categories": 263,
+      "links": 6587,
+      "templates": 1954,
+      "images": 913,
+      "revisions": 243,
+      "infoboxes": 6,
+      "errors": 0
+    },
+    "per_wiki": [
+      {
+        "job_id": "portfolio-smoke-onepiece",
+        "wiki": "https://onepiece.fandom.com",
+        "status": "finished",
+        "counts": {
+          "pages": 47,
+          "categories": 0,
+          "links": 1935,
+          "templates": 0,
+          "images": 0,
+          "revisions": 47,
+          "errors": 0,
+          "checkpoints": 1,
+          "infoboxes": 0
+        },
+        "quality": [
+          {
+            "check": "Missing page text",
+            "affected": 47,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without categories",
+            "affected": 47,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without revisions",
+            "affected": 0,
+            "status": "passed"
+          },
+          {
+            "check": "Crawl errors",
+            "affected": 0,
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "job_id": "portfolio-smoke-stardewvalley",
+        "wiki": "https://stardewvalley.fandom.com",
+        "status": "finished",
+        "counts": {
+          "pages": 50,
+          "categories": 70,
+          "links": 1420,
+          "templates": 46,
+          "images": 694,
+          "revisions": 50,
+          "errors": 0,
+          "checkpoints": 1,
+          "infoboxes": 6
+        },
+        "quality": [
+          {
+            "check": "Missing page text",
+            "affected": 18,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without categories",
+            "affected": 18,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without revisions",
+            "affected": 0,
+            "status": "passed"
+          },
+          {
+            "check": "Crawl errors",
+            "affected": 0,
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "job_id": "portfolio-smoke-fallout",
+        "wiki": "https://fallout.fandom.com",
+        "status": "finished",
+        "counts": {
+          "pages": 46,
+          "categories": 8,
+          "links": 948,
+          "templates": 105,
+          "images": 23,
+          "revisions": 46,
+          "errors": 0,
+          "checkpoints": 1,
+          "infoboxes": 0
+        },
+        "quality": [
+          {
+            "check": "Missing page text",
+            "affected": 40,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without categories",
+            "affected": 40,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without revisions",
+            "affected": 0,
+            "status": "passed"
+          },
+          {
+            "check": "Crawl errors",
+            "affected": 0,
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "job_id": "portfolio-smoke-starwars",
+        "wiki": "https://starwars.fandom.com",
+        "status": "finished",
+        "counts": {
+          "pages": 50,
+          "categories": 134,
+          "links": 638,
+          "templates": 524,
+          "images": 147,
+          "revisions": 50,
+          "errors": 0,
+          "checkpoints": 1,
+          "infoboxes": 0
+        },
+        "quality": [
+          {
+            "check": "Missing page text",
+            "affected": 19,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without categories",
+            "affected": 19,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without revisions",
+            "affected": 0,
+            "status": "passed"
+          },
+          {
+            "check": "Crawl errors",
+            "affected": 0,
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "job_id": "portfolio-smoke-zelda",
+        "wiki": "https://zelda.fandom.com",
+        "status": "finished",
+        "counts": {
+          "pages": 50,
+          "categories": 51,
+          "links": 1646,
+          "templates": 1279,
+          "images": 49,
+          "revisions": 50,
+          "errors": 0,
+          "checkpoints": 1,
+          "infoboxes": 0
+        },
+        "quality": [
+          {
+            "check": "Missing page text",
+            "affected": 38,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without categories",
+            "affected": 38,
+            "status": "warning"
+          },
+          {
+            "check": "Pages without revisions",
+            "affected": 0,
+            "status": "passed"
+          },
+          {
+            "check": "Crawl errors",
+            "affected": 0,
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "category_counts": [
+      {
+        "label": "Category:Canon articles",
+        "value": 15
+      },
+      {
+        "label": "Category:Items",
+        "value": 14
+      },
+      {
+        "label": "Category:Legends articles",
+        "value": 14
+      },
+      {
+        "label": "Category:Pages using DynamicPageList3 parser function",
+        "value": 12
+      },
+      {
+        "label": "Category:Decorations",
+        "value": 11
+      },
+      {
+        "label": "Category:Songs in The Minish Cap",
+        "value": 11
+      },
+      {
+        "label": "Category:Songs",
+        "value": 11
+      },
+      {
+        "label": "Category:Music",
+        "value": 11
+      },
+      {
+        "label": "Category:Needs more information",
+        "value": 8
+      },
+      {
+        "label": "Category:Articles that are known by a nickname",
+        "value": 7
+      },
+      {
+        "label": "Category:Individuals of unspecified gender",
+        "value": 6
+      },
+      {
+        "label": "Category:Articles with unpopulated family parameters",
+        "value": 6
+      },
+      {
+        "label": "Category:Canon articles with Legends counterparts",
+        "value": 5
+      },
+      {
+        "label": "Category:Trees",
+        "value": 4
+      },
+      {
+        "label": "Category:Locations",
+        "value": 4
+      },
+      {
+        "label": "Category:Furniture",
+        "value": 4
+      },
+      {
+        "label": "Category:Imperial Navy pilots of the Galactic Empire",
+        "value": 4
+      },
+      {
+        "label": "Category:Seeds",
+        "value": 3
+      },
+      {
+        "label": "Category:Weapon stubs",
+        "value": 3
+      },
+      {
+        "label": "Category:Shield generators",
+        "value": 3
+      }
+    ],
+    "network": {
+      "nodes": [
+        {
+          "id": "\"The Fix\"",
+          "degree": 100
+        },
+        {
+          "id": "73rd NHK Kohaku Uta Gassen Collaboration Special Manga",
+          "degree": 80
+        },
+        {
+          "id": "Alamite",
+          "degree": 73
+        },
+        {
+          "id": "13",
+          "degree": 64
+        },
+        {
+          "id": "14",
+          "degree": 36
+        },
+        {
+          "id": "\"24-karat\" beaches",
+          "degree": 25
+        },
+        {
+          "id": "1st Friend Forever",
+          "degree": 20
+        },
+        {
+          "id": "\"Avenger\"",
+          "degree": 20
+        },
+        {
+          "id": "\"Accu-Strike\" integrated targeting computer",
+          "degree": 18
+        },
+        {
+          "id": "\"Bantha Eye\" laser sight",
+          "degree": 12
+        },
+        {
+          "id": "\"Autoguard\" Cybernetic Reflex Suite",
+          "degree": 10
+        },
+        {
+          "id": "\"AutoTracker\" Droid GPS Module",
+          "degree": 9
+        },
+        {
+          "id": "1 Willow Lane",
+          "degree": 6
+        },
+        {
+          "id": "'Burnt Offering'",
+          "degree": 6
+        },
+        {
+          "id": "\"Autodoc\" monitoring network",
+          "degree": 6
+        },
+        {
+          "id": "Canon",
+          "degree": 5
+        },
+        {
+          "id": "1 River Road",
+          "degree": 4
+        },
+        {
+          "id": "Fantasy Flight Games",
+          "degree": 4
+        },
+        {
+          "id": "2 Willow Lane",
+          "degree": 3
+        },
+        {
+          "id": "Category:Needs more information",
+          "degree": 3
+        },
+        {
+          "id": "Abandoned House",
+          "degree": 3
+        },
+        {
+          "id": "Roleplaying game",
+          "degree": 3
+        },
+        {
+          "id": "Star Wars Legends",
+          "degree": 3
+        },
+        {
+          "id": "Galactic Credit Standard",
+          "degree": 3
+        },
+        {
+          "id": "Emily",
+          "degree": 2
+        },
+        {
+          "id": "Haley",
+          "degree": 2
+        },
+        {
+          "id": "Jodi",
+          "degree": 2
+        },
+        {
+          "id": "Kent",
+          "degree": 2
+        },
+        {
+          "id": "Stardew Valley",
+          "degree": 2
+        },
+        {
+          "id": "Alex",
+          "degree": 2
+        }
+      ],
+      "edges": [
+        {
+          "source": "1st Friend Forever",
+          "target": "Category:Music Stubs"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Category:One Piece Endings"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Category:One Piece Openings"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Category:Songs of the World"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "File:1st Friend Forever.png"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Template:Navbox"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Template:Songs Navibox"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "We Are HERE!"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "We Are!"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "We Are!/Tohoshinki (2008) Remix"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "We Can!"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "We Go!"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "We're All Bones When We Die"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Where the Wind Blows"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Whisky Peak Saloon"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Wish Upon a Star"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "You Are the One"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "You Can't Turn the Tide"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Yume Miru Koro o Sugitemo"
+        },
+        {
+          "source": "1st Friend Forever",
+          "target": "Zombie Night"
+        },
+        {
+          "source": "2 Willow Lane",
+          "target": "1 Willow Lane"
+        },
+        {
+          "source": "2 Willow Lane",
+          "target": "Emily"
+        },
+        {
+          "source": "2 Willow Lane",
+          "target": "Haley"
+        },
+        {
+          "source": "1 Willow Lane",
+          "target": "Jodi"
+        },
+        {
+          "source": "1 Willow Lane",
+          "target": "Kent"
+        },
+        {
+          "source": "1 Willow Lane",
+          "target": "Sam"
+        },
+        {
+          "source": "1 Willow Lane",
+          "target": "Stardew Valley"
+        },
+        {
+          "source": "1 Willow Lane",
+          "target": "Vincent"
+        },
+        {
+          "source": "1 River Road",
+          "target": "Alex"
+        },
+        {
+          "source": "1 River Road",
+          "target": "Evelyn"
+        },
+        {
+          "source": "1 River Road",
+          "target": "George"
+        },
+        {
+          "source": "1 River Road",
+          "target": "Stardew Valley"
+        },
+        {
+          "source": "??Pinky Lemon??",
+          "target": "Duck Mayonnaise"
+        },
+        {
+          "source": "??Pinky Lemon??",
+          "target": "Stardrop Saloon"
+        },
+        {
+          "source": "'Jade Hills'",
+          "target": "Category:Needs more information"
+        },
+        {
+          "source": "'Jade Hills'",
+          "target": "Stardew Valley Museum & Library"
+        },
+        {
+          "source": "'Mysterium'",
+          "target": "Movie Theater"
+        },
+        {
+          "source": "Abandoned House",
+          "target": "Category:Needs more information"
+        },
+        {
+          "source": "Abandoned House",
+          "target": "Cindersap Forest"
+        },
+        {
+          "source": "Abandoned House",
+          "target": "Shop"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Light mutton chops"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Light yao guai ribs"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Luck (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Lunchbox (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Lure weed (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Mad Scientist (perk)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Maddox Mullen"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Madeline Keene"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Magellan"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Med-X (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Megasloth meat"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Megasloth mushroom"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Megasloth mushroom soup"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Megasloth tenderloin"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Melon (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Melon bloom"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Melon blossom (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Melon juice"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Mentats (Fallout 76)"
+        },
+        {
+          "source": "\"The Fix\"",
+          "target": "Merc charmer outfit (Fallout 76)"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "\"24-karat\" beaches/Canon"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "\"24-karat\" beaches/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "2014"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Algae/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Beach/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Color/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Coral/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Core Worlds/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Corell/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Corellia's southern continent"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Corellia/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Fantasy Flight Games"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Gold Beaches/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Gold/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "January 24"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Planet/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Roleplaying game"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Silica/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Species/Legends"
+        },
+        {
+          "source": "\"24-karat\" beaches",
+          "target": "Star Wars Legends"
+        },
+        {
+          "source": "13",
+          "target": "Category:Music"
+        },
+        {
+          "source": "13",
+          "target": "Data:Translations"
+        },
+        {
+          "source": "13",
+          "target": "Frog's Song of Soul"
+        },
+        {
+          "source": "13",
+          "target": "Goddess's Harp"
+        },
+        {
+          "source": "13",
+          "target": "Goron Lullaby"
+        },
+        {
+          "source": "13",
+          "target": "Grass Whistle"
+        },
+        {
+          "source": "13",
+          "target": "Harp of Ages"
+        },
+        {
+          "source": "13",
+          "target": "Horse Call"
+        },
+        {
+          "source": "13",
+          "target": "Instrument of the Sirens"
+        },
+        {
+          "source": "13",
+          "target": "Inverted Song of Time"
+        },
+        {
+          "source": "13",
+          "target": "Lokomo Song"
+        },
+        {
+          "source": "13",
+          "target": "Makar's Violin"
+        },
+        {
+          "source": "13",
+          "target": "Manbo's Mambo"
+        },
+        {
+          "source": "13",
+          "target": "Minuet of Forest"
+        },
+        {
+          "source": "13",
+          "target": "Music House"
+        },
+        {
+          "source": "13",
+          "target": "Nayru's Wisdom"
+        },
+        {
+          "source": "13",
+          "target": "New Wave Bossa Nova"
+        },
+        {
+          "source": "13",
+          "target": "Nocturne of Shadow"
+        },
+        {
+          "source": "13",
+          "target": "Oath to Order"
+        },
+        {
+          "source": "13",
+          "target": "Ocarina"
+        }
+      ]
+    }
+  },
+  "events_path": "campaign_events.jsonl"
+}
