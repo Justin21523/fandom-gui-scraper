@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "job_id": "portfolio-smoke-zelda",
+  "status": "finished",
+  "created_at": "2026-06-24T14:31:50+00:00",
+  "finished_at": "2026-06-24T14:31:50+00:00",
+  "anime_name": "Zelda",
+  "wiki_url": "https://zelda.fandom.com",
+  "api_endpoint": "https://zelda.fandom.com/api.php",
+  "mode": "campaign-live",
+  "compliance": {
+    "robots": "respected",
+    "rate_limit_seconds": 1.0,
+    "user_agent": "FandomGuiScraper/1.0",
+    "blocked_requests": 0
+  },
+  "outputs": {
+    "wiki_db": "wiki.db"
+  },
+  "wiki_db": {
+    "path": "wiki.db",
+    "status": "finished",
+    "counts": {
+      "wikis": 1,
+      "crawl_runs": 1,
+      "pages": 50,
+      "categories": 51,
+      "links": 1646,
+      "templates": 1279,
+      "images": 49,
+      "infoboxes": 0,
+      "revisions": 50,
+      "errors": 0,
+      "checkpoints": 1
+    },
+    "error": null
+  },
+  "counts": {
+    "wikis": 1,
+    "crawl_runs": 1,
+    "pages": 50,
+    "categories": 51,
+    "links": 1646,
+    "templates": 1279,
+    "images": 49,
+    "infoboxes": 0,
+    "revisions": 50,
+    "errors": 0,
+    "checkpoints": 1
+  },
+  "output_root": "sample_data/jobs/portfolio-smoke-zelda"
+}
