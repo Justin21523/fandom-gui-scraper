@@ -17,6 +17,7 @@ import subprocess
 import sys
 import os
 import json
+import tempfile
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, QTimer, QMutex, QMutexLocker
 from PyQt6.QtWidgets import QMessageBox
@@ -193,14 +194,8 @@ class ScrapyWorkerThread(QThread):
         if custom_headers:
             settings["DEFAULT_REQUEST_HEADERS"] = custom_headers
 
-        # Add proxy settings if enabled
         if self.config.get("proxy_enabled", False):
-            proxy_url = self.config.get("proxy_url", "")
-            if proxy_url:
-                settings["DOWNLOADER_MIDDLEWARES"] = {
-                    "scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware": 110,
-                }
-                settings["HTTP_PROXY"] = proxy_url
+            self.logger.warning("Proxy settings are ignored; the scraper slows down or stops on access restrictions")
 
         return settings
 
@@ -250,25 +245,21 @@ class ScrapyWorkerThread(QThread):
             # Create a simple script to run the spider
             script_content = self.generate_spider_script(spider, settings)
 
-            # Write script to temporary file
-            script_path = Path.cwd() / "temp_spider_script.py"
-            with open(script_path, "w", encoding="utf-8") as f:
-                f.write(script_content)
+            project_root = Path(__file__).resolve().parents[2]
+            with tempfile.TemporaryDirectory(prefix="fandom_scraper_") as tmp_dir:
+                script_path = Path(tmp_dir) / "spider_runner.py"
+                with open(script_path, "w", encoding="utf-8") as f:
+                    f.write(script_content)
 
-            # Run spider in subprocess
-            process = subprocess.Popen(
-                [sys.executable, str(script_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=str(Path.cwd()),
-            )
+                process = subprocess.Popen(
+                    [sys.executable, str(script_path)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=str(project_root),
+                )
 
-            # Monitor process output
-            self.monitor_spider_process(process)
-
-            # Clean up temporary script
-            script_path.unlink(missing_ok=True)
+                self.monitor_spider_process(process)
 
         except Exception as e:
             self.logger.error(f"Failed to run spider process: {e}")
@@ -291,7 +282,7 @@ import os
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = Path.cwd()
 sys.path.insert(0, str(project_root))
 
 from scrapy.crawler import CrawlerProcess

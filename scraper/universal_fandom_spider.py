@@ -25,7 +25,7 @@ import yaml
 import json
 from typing import List, Dict, Any, Optional, Literal
 from pathlib import Path
-from urllib.parse import urlparse, urljoin, urlencode, quote
+from urllib.parse import urlparse, urljoin, quote
 
 import scrapy
 from scrapy.http import Response, Request
@@ -33,7 +33,8 @@ from scrapy.http import Response, Request
 # Import base spider and existing functionality
 from scraper.base_spider import BaseSpider
 from scraper.fandom_spider import FandomSpiderMixin
-from utils.brave_search import BraveSearchClient, FandomSearchResult
+from scraper.mediawiki import InvalidWikiTargetError, MediaWikiActionClient, normalize_wiki_target
+from utils.brave_search import BraveSearchClient
 from utils.logger import get_logger
 
 
@@ -248,15 +249,22 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
         # Discover wiki URL if input is name
         if input_type == "name":
-            self.wiki_url = self._discover_wiki_url(input_source)
-            if not self.wiki_url:
+            discovered_url = self._discover_wiki_url(input_source)
+            if not discovered_url:
                 raise ValueError(f"Could not find Fandom wiki for: {input_source}")
+            self.wiki_target = normalize_wiki_target(discovered_url)
         else:
-            self.wiki_url = self._validate_and_normalize_url(input_source)
+            try:
+                self.wiki_target = normalize_wiki_target(input_source)
+            except InvalidWikiTargetError as exc:
+                raise ValueError(f"Not a valid Fandom URL or MediaWiki API endpoint: {input_source}") from exc
 
         # Extract anime name and domain from URL
+        self.wiki_url = self.wiki_target.base_url
+        self.api_url = self.wiki_target.api_url
         self.anime_name = self._extract_anime_name_from_url(self.wiki_url)
         self.wiki_domain = self._extract_domain_from_url(self.wiki_url)
+        self.mediawiki_client = MediaWikiActionClient(self.wiki_target, respect_robots=False, rate_delay=0)
         self.use_playwright = use_playwright
         self.use_playwright_detail_pages = use_playwright_detail_pages
         self._character_parser = None
@@ -379,15 +387,10 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
 
-        # Validate it's a Fandom URL
-        if '.fandom.com' not in url:
-            raise ValueError(f"Not a valid Fandom URL: {url}")
-
-        # Normalize to base wiki URL
-        parsed = urlparse(url)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-
-        return base_url
+        try:
+            return normalize_wiki_target(url).base_url
+        except InvalidWikiTargetError as exc:
+            raise ValueError(str(exc)) from exc
 
     def _extract_anime_name_from_url(self, url: str) -> str:
         """
@@ -478,8 +481,8 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
                     'dont_redirect': False,
                 }
 
-                # Default: use regular Scrapy downloader (faster and avoids Playwright timeouts).
-                # If a site is blocked (e.g., Cloudflare/403) we can retry with Playwright later.
+                # Default: use regular Scrapy downloader. Playwright is only an
+                # optional rendering fallback for pages that need JavaScript.
                 if self.use_playwright:
                     from scrapy_playwright.page import PageMethod
                     meta.update({
@@ -509,17 +512,7 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
 
     def _build_categorymembers_api_url(self, category_title: str, cmcontinue: Optional[str] = None) -> str:
         """Build MediaWiki categorymembers API URL for this wiki."""
-        params = {
-            'action': 'query',
-            'list': 'categorymembers',
-            'cmtitle': category_title,
-            'cmlimit': 500,
-            'cmnamespace': '0|14',  # pages + subcategories
-            'format': 'json',
-        }
-        if cmcontinue:
-            params['cmcontinue'] = cmcontinue
-        return f"{self.wiki_url}/api.php?{urlencode(params)}"
+        return self.mediawiki_client.build_categorymembers_url(category_title, cmcontinue=cmcontinue)
 
     def _build_wiki_page_url(self, title: str) -> str:
         """Build a canonical /wiki/ URL for a given page title."""
@@ -546,12 +539,11 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
             self.logger.error(f"Failed to parse category API JSON for {response.url}: {e}")
             return
 
-        members = (((payload.get('query') or {}).get('categorymembers')) or [])
+        members = self.mediawiki_client.extract_category_members(payload)
         self.logger.info(f"Category API returned {len(members)} members")
 
         # Handle pagination
-        cont = payload.get('continue') or {}
-        cmcontinue = cont.get('cmcontinue')
+        cmcontinue = self.mediawiki_client.extract_cmcontinue(payload)
 
         # Queue members
         for member in members:
@@ -639,37 +631,14 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
         self.logger.info(f"Response status: {response.status}")
         self.logger.info(f"Response size: {len(response.body)} bytes")
 
-        # If this looks like a block page or the HTML is incomplete, retry once with Playwright.
+        # If this looks like an access restriction, record it and stop this path.
         if not response.meta.get('playwright') and not response.meta.get('playwright_retry'):
             body_lower = response.text.lower() if hasattr(response, 'text') else ''
             blocked_markers = ['cloudflare', 'cf-browser-verification', 'attention required', 'captcha']
             if response.status in (403, 429) or any(m in body_lower for m in blocked_markers):
-                from scrapy_playwright.page import PageMethod
-                retry_meta = dict(response.meta)
-                retry_meta.update({
-                    'playwright': True,
-                    'playwright_retry': True,
-                    'playwright_include_page': False,
-                    'playwright_page_goto_kwargs': {
-                        'wait_until': 'domcontentloaded',
-                        'timeout': 60000,
-                    },
-                    'playwright_page_methods': [
-                        PageMethod(
-                            'wait_for_selector',
-                            '.category-page__member, .category-page__members, #mw-pages, .mw-category, .mw-category-group',
-                            timeout=15000,
-                        ),
-                        PageMethod('wait_for_timeout', 500),
-                    ],
-                })
-                self.logger.warning(f"Retrying with Playwright due to suspected blocking: {response.url}")
-                yield Request(
-                    url=response.url,
-                    callback=self.parse_category_page,
-                    errback=self.handle_error,
-                    meta=retry_meta,
-                    dont_filter=True,
+                self.logger.warning(
+                    "Access restriction detected; stopping this category path instead of retrying: "
+                    f"{response.url} status={response.status}"
                 )
                 return
 
@@ -892,10 +861,10 @@ class UniversalFandomSpider(BaseSpider, FandomSpiderMixin):
             self.logger.warning(f"This variant may not exist for this wiki. Trying next variant...")
         elif '403' in str(failure.value) or 'Forbidden' in str(failure.type.__name__):
             self.logger.error(f"Access forbidden (403): {request.url}")
-            self.logger.error(f"The wiki may be blocking our crawler")
+            self.logger.error("Stopping this request path; do not retry through alternate network identity")
         elif 'robots.txt' in str(failure.value).lower():
             self.logger.error(f"Blocked by robots.txt: {request.url}")
-            self.logger.error(f"Consider setting ROBOTSTXT_OBEY = False for testing")
+            self.logger.error("Respecting robots.txt restriction")
 
         # Call parent error handler
         super().handle_error(failure)

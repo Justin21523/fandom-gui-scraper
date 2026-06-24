@@ -32,7 +32,7 @@ export function renderSettingsPage(container) {
                         <div class="settings-item">
                             <div class="settings-item__info">
                                 <div class="settings-item__label">${t('settings.general.language')}</div>
-                                <div class="settings-item__description">選擇界面顯示語言</div>
+                                <div class="settings-item__description">${t('settings.general.languageDescription')}</div>
                             </div>
                             <div class="settings-item__control">
                                 <select class="select" id="locale-select">
@@ -49,7 +49,7 @@ export function renderSettingsPage(container) {
                         <div class="settings-item">
                             <div class="settings-item__info">
                                 <div class="settings-item__label">${t('settings.general.theme')}</div>
-                                <div class="settings-item__description">選擇界面顏色主題</div>
+                                <div class="settings-item__description">${t('settings.general.themeDescription')}</div>
                             </div>
                             <div class="settings-item__control">
                                 <div class="theme-options">
@@ -59,11 +59,17 @@ export function renderSettingsPage(container) {
                                         </svg>
                                         <span>${t('settings.general.lightTheme')}</span>
                                     </button>
-                                    <button class="theme-option ${theme === 'dark' ? 'theme-option--active' : ''}" data-theme="dark">
+                                    <button class="theme-option ${theme === 'indigo' ? 'theme-option--active' : ''}" data-theme="indigo">
                                         <svg viewBox="0 0 20 20" fill="currentColor">
                                             <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
                                         </svg>
                                         <span>${t('settings.general.darkTheme')}</span>
+                                    </button>
+                                    <button class="theme-option ${theme === 'ocean' ? 'theme-option--active' : ''}" data-theme="ocean">
+                                        <svg viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 2a8 8 0 00-7.94 7.03A6 6 0 0010 18a6 6 0 007.94-8.97A8 8 0 0010 2zm0 2a6 6 0 015.57 3.77A6.002 6.002 0 004.43 7.77 6 6 0 0110 4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span>${t('settings.general.oceanTheme')}</span>
                                     </button>
                                 </div>
                             </div>

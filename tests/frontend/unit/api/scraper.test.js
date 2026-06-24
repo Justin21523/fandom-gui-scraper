@@ -10,12 +10,17 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockDelete = jest.fn();
+const mockBuildURL = jest.fn((path, params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return `http://localhost/api/v1${path}${query ? `?${query}` : ''}`;
+});
 
 jest.unstable_mockModule('@/api/client.js', () => ({
   default: {
     get: mockGet,
     post: mockPost,
     delete: mockDelete,
+    _buildURL: mockBuildURL,
   },
 }));
 
@@ -29,6 +34,18 @@ const {
   pauseUniversalScraper,
   resumeUniversalScraper,
   getUniversalLogs,
+  getUniversalJobWikiSummary,
+  getUniversalJobWikiTables,
+  browseUniversalJobWikiTable,
+  getUniversalJobWikiPage,
+  getUniversalJobWikiAnalysis,
+  buildUniversalJobWikiExportUrl,
+  listCampaigns,
+  listCampaignPresets,
+  getCampaign,
+  getCampaignEvents,
+  getCampaignAnalysis,
+  runCampaign,
   // Legacy Scraper
   getPresets,
   startScraper,
@@ -206,6 +223,63 @@ describe('Scraper API Client - Universal Scraper', () => {
         limit: 50,
         level: 'ERROR',
       });
+    });
+  });
+
+  describe('wiki.db APIs', () => {
+    test('should fetch wiki db summary', async () => {
+      mockGet.mockResolvedValue({ summary: { counts: { pages: 1 } } });
+
+      await getUniversalJobWikiSummary('job-1');
+
+      expect(mockGet).toHaveBeenCalledWith('/scraper/jobs/job-1/wiki-db/summary');
+    });
+
+    test('should browse wiki db table with options', async () => {
+      mockGet.mockResolvedValue({ items: [] });
+
+      await browseUniversalJobWikiTable('job-1', 'pages', { limit: 25, offset: 50, q: 'Luffy' });
+
+      expect(mockGet).toHaveBeenCalledWith('/scraper/jobs/job-1/wiki-db/table/pages', {
+        limit: 25,
+        offset: 50,
+        q: 'Luffy',
+      });
+    });
+
+    test('should fetch wiki db tables, page detail, analysis, and export URL', async () => {
+      mockGet.mockResolvedValue({});
+
+      await getUniversalJobWikiTables('job-1');
+      await getUniversalJobWikiPage('job-1', 7);
+      await getUniversalJobWikiAnalysis('job-1');
+      const url = buildUniversalJobWikiExportUrl('job-1', 'pages', 'csv');
+
+      expect(mockGet).toHaveBeenCalledWith('/scraper/jobs/job-1/wiki-db/tables');
+      expect(mockGet).toHaveBeenCalledWith('/scraper/jobs/job-1/wiki-db/pages/7');
+      expect(mockGet).toHaveBeenCalledWith('/scraper/jobs/job-1/wiki-db/analysis');
+      expect(url).toContain('/scraper/jobs/job-1/wiki-db/export?dataset=pages&format=csv');
+    });
+  });
+
+  describe('campaign APIs', () => {
+    test('should call campaign endpoints', async () => {
+      mockGet.mockResolvedValue({});
+      mockPost.mockResolvedValue({ status: 'queued' });
+
+      await listCampaigns(5);
+      await listCampaignPresets();
+      await getCampaign('portfolio-smoke');
+      await getCampaignEvents('portfolio-smoke', 50);
+      await getCampaignAnalysis('portfolio-smoke');
+      await runCampaign({ campaign_id: 'portfolio-smoke' });
+
+      expect(mockGet).toHaveBeenCalledWith('/scraper/campaigns', { limit: 5 });
+      expect(mockGet).toHaveBeenCalledWith('/scraper/campaigns/presets');
+      expect(mockGet).toHaveBeenCalledWith('/scraper/campaigns/portfolio-smoke');
+      expect(mockGet).toHaveBeenCalledWith('/scraper/campaigns/portfolio-smoke/events', { limit: 50 });
+      expect(mockGet).toHaveBeenCalledWith('/scraper/campaigns/portfolio-smoke/analysis');
+      expect(mockPost).toHaveBeenCalledWith('/scraper/campaigns/run', { campaign_id: 'portfolio-smoke' });
     });
   });
 });

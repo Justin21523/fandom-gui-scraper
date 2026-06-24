@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional
 from api.jobs.events import publish
 from api.jobs.models import JobStatus, UniversalJobRequest, UniversalJobProgress
 from api.jobs.store import update_status, update_progress, append_log, get_controls
+from scraper.mediawiki import HarvestConfig, harvest_to_sqlite
 
 
 def _utcnow() -> datetime:
@@ -30,6 +31,23 @@ def _safe_json_parse(value: str) -> Optional[Dict[str, Any]]:
 def _job_output_root(job_id: str) -> Path:
     base = Path(os.getenv("FANDOM_DATA_ROOT", "/data"))
     return base / "jobs" / job_id
+
+
+def _merge_manifest(output_root: Path, updates: Dict[str, Any]) -> None:
+    manifest_path = output_root / "manifest.json"
+    manifest: Dict[str, Any] = {}
+    if manifest_path.exists():
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except Exception:
+            manifest = {}
+    manifest.update(updates)
+    try:
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2, default=str)
+    except Exception:
+        pass
 
 
 def _rotate_log_file(path: Path, max_bytes: int, backups: int) -> None:
@@ -74,9 +92,11 @@ def run_universal_job(job_id: str, config_dict: Dict[str, Any]) -> None:
     (output_root / "logs").mkdir(parents=True, exist_ok=True)
     (output_root / "cache" / "http").mkdir(parents=True, exist_ok=True)
     (output_root / "cache" / "chromium").mkdir(parents=True, exist_ok=True)
+    wiki_db_path = Path(os.getenv("WIKI_SQLITE_PATH", str(output_root / "wiki.db")))
 
     progress = UniversalJobProgress()
     started = _utcnow()
+    wiki_harvest_result: Optional[Dict[str, Any]] = None
 
     def build_legacy_progress(status: str) -> Dict[str, Any]:
         return {
@@ -128,10 +148,47 @@ def run_universal_job(job_id: str, config_dict: Dict[str, Any]) -> None:
             "DOWNLOAD_IMAGES": "true" if config.download_images else "false",
             "EXPORT_MODE": config.export_mode.value,
             "EXPORT_JSON_GZIP": "true" if config.export_json_gzip else "false",
+            "ENABLE_WIKI_SQLITE": "true" if config.enable_wiki_sqlite else "false",
+            "WIKI_SQLITE_PATH": str(wiki_db_path),
             "HTTPCACHE_DIR": str(output_root / "cache" / "http"),
             "PLAYWRIGHT_CACHE_DIR": str(output_root / "cache" / "chromium"),
         }
     )
+
+    if config.enable_wiki_sqlite and config.mediawiki_page_limit > 0:
+        if config.input_type == "url":
+            try:
+                append_log(job_id, f"Starting MediaWiki SQLite harvest: {config.input_source}")
+                wiki_harvest_result = harvest_to_sqlite(
+                    HarvestConfig(
+                        target=config.input_source,
+                        db_path=wiki_db_path,
+                        job_id=job_id,
+                        page_limit=config.mediawiki_page_limit,
+                        include_page_text=config.include_page_text,
+                        rate_delay=config.delay,
+                        respect_robots=True,
+                        include_infobox_html=config.include_infobox_html,
+                        parse_html_limit=config.parse_html_limit,
+                    )
+                )
+                append_log(job_id, f"MediaWiki SQLite harvest complete: {wiki_harvest_result}")
+            except Exception as exc:
+                wiki_harvest_result = {
+                    "status": "failed",
+                    "db_path": str(wiki_db_path),
+                    "error": str(exc),
+                    "counts": {},
+                }
+                append_log(job_id, f"MediaWiki SQLite harvest failed: {exc}")
+        else:
+            wiki_harvest_result = {
+                "status": "skipped",
+                "db_path": str(wiki_db_path),
+                "error": "MediaWiki harvest requires input_type=url before wiki discovery is available",
+                "counts": {},
+            }
+            append_log(job_id, "MediaWiki SQLite harvest skipped for input_type=name")
 
     cmd = [
         sys.executable,
@@ -291,6 +348,20 @@ def run_universal_job(job_id: str, config_dict: Dict[str, Any]) -> None:
         rc = process.wait()
         keep_cache = os.getenv("KEEP_JOB_CACHE", "false").lower() == "true"
         if rc == 0:
+            if wiki_harvest_result:
+                _merge_manifest(
+                    output_root,
+                    {
+                        "wiki_db": {
+                            "path": str(Path(wiki_harvest_result.get("db_path", wiki_db_path)).relative_to(output_root))
+                            if str(wiki_harvest_result.get("db_path", wiki_db_path)).startswith(str(output_root))
+                            else str(wiki_harvest_result.get("db_path", wiki_db_path)),
+                            "status": wiki_harvest_result.get("status"),
+                            "counts": wiki_harvest_result.get("counts", {}),
+                            "error": wiki_harvest_result.get("error"),
+                        }
+                    },
+                )
             update_status(job_id, JobStatus.finished)
             publish_progress(force=True)
             publish(

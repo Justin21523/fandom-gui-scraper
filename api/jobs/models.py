@@ -45,6 +45,12 @@ class UniversalJobRequest(BaseModel):
     export_mode: ExportMode = ExportMode.jsonl
     export_json_gzip: bool = True
 
+    enable_wiki_sqlite: bool = True
+    mediawiki_page_limit: int = Field(default=200, ge=0)
+    include_page_text: bool = True
+    include_infobox_html: bool = True
+    parse_html_limit: int = Field(default=25, ge=0, le=500)
+
     # retention
     keep_job_days: int = Field(default=14, ge=1, le=365)
 

@@ -1,16 +1,16 @@
 # scraper/utils/anti_ban
 """
-Anti-ban utilities and strategies for web scraping.
+Polite crawling utilities for web scraping.
 
-This module provides utilities to avoid being detected and banned
-while scraping websites, including rate limiting, IP rotation,
-and behavior mimicking.
+This module provides request pacing, session reuse, and access-restriction
+handling. It does not solve CAPTCHA, rotate proxies, or change identity
+evasion.
 """
 
 import random
 import time
 import hashlib
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any
 from urllib.parse import urlparse
 import logging
 
@@ -22,7 +22,7 @@ class RateLimiter:
     Rate limiting utility to control request frequency.
 
     This class helps manage request timing to avoid overwhelming
-    target servers and reduce the risk of being banned.
+    target servers.
     """
 
     def __init__(
@@ -202,10 +202,10 @@ class SessionManager:
 
 class BehaviorMimicker:
     """
-    Mimic human browsing behavior to avoid detection.
+    Optional page dwell-time calculator for legacy configs.
 
-    This class implements various strategies to make requests
-    appear more human-like.
+    Disabled by default. Prefer deterministic rate limits and AutoThrottle for
+    normal crawling.
     """
 
     def __init__(
@@ -215,12 +215,12 @@ class BehaviorMimicker:
         scroll_simulation: bool = True,
     ):
         """
-        Initialize behavior mimicker.
+        Initialize optional dwell-time controls.
 
         Args:
-            reading_time_min: Minimum simulated reading time
-            reading_time_max: Maximum simulated reading time
-            scroll_simulation: Whether to simulate scrolling delays
+            reading_time_min: Minimum dwell time
+            reading_time_max: Maximum dwell time
+            scroll_simulation: Whether to split dwell time into smaller waits
         """
         self.reading_time_min = reading_time_min
         self.reading_time_max = reading_time_max
@@ -254,7 +254,7 @@ class BehaviorMimicker:
 
     def simulate_human_delay(self, content_length: Optional[int] = None):
         """
-        Simulate human-like delay before next request.
+        Apply optional dwell-time delay before next request.
 
         Args:
             content_length: Length of page content
@@ -279,7 +279,7 @@ class BehaviorMimicker:
 
     def should_take_break(self) -> bool:
         """
-        Determine if we should take a longer break to mimic human behavior.
+        Determine if a longer configured break should be taken.
 
         Returns:
             True if a break is recommended
@@ -297,22 +297,21 @@ class BehaviorMimicker:
         return False
 
     def take_break(self):
-        """Take a longer break to mimic human behavior."""
+        """Take a longer configured break."""
         break_time = random.uniform(30, 120)  # 30 seconds to 2 minutes
-        logger.info(f"Taking human-like break for {break_time:.1f} seconds")
+        logger.info(f"Taking configured crawl break for {break_time:.1f} seconds")
         time.sleep(break_time)
 
 
 class RequestFingerprinter:
     """
-    Manage request fingerprinting to avoid detection.
+    Track recent request signatures for accidental duplicate bursts.
 
-    This class helps vary request characteristics to avoid
-    being fingerprinted as a bot.
+    The class name is kept for compatibility with existing imports.
     """
 
     def __init__(self):
-        """Initialize request fingerprinter."""
+        """Initialize request history tracker."""
         self.request_history = []
         self.max_history = 100
 
@@ -331,8 +330,8 @@ class RequestFingerprinter:
         key_headers = ["User-Agent", "Accept", "Accept-Language"]
         header_string = "".join([headers.get(h, "") for h in key_headers])
 
-        fingerprint = f"{url}:{header_string}"
-        return hashlib.md5(fingerprint.encode()).hexdigest()
+        request_signature = f"{url}:{header_string}"
+        return hashlib.md5(request_signature.encode()).hexdigest()
 
     def is_duplicate_request(self, url: str, headers: Dict[str, str]) -> bool:
         """
@@ -353,7 +352,7 @@ class RequestFingerprinter:
 
     def record_request(self, url: str, headers: Dict[str, str]):
         """
-        Record a request in the fingerprint history.
+        Record a request in the recent request history.
 
         Args:
             url: Request URL
@@ -369,24 +368,24 @@ class RequestFingerprinter:
 
 class AntiBanManager:
     """
-    Comprehensive anti-ban management system.
+    Backward-compatible polite crawling manager.
 
-    This class coordinates all anti-ban strategies including
-    rate limiting, session management, and behavior mimicking.
+    This class coordinates rate limiting, session reuse, and access-restriction
+    handling.
     """
 
     def __init__(
         self,
         requests_per_minute: int = 30,
-        enable_behavior_mimicking: bool = True,
+        enable_behavior_mimicking: bool = False,
         enable_session_management: bool = True,
     ):
         """
-        Initialize anti-ban manager.
+        Initialize polite crawling manager.
 
         Args:
             requests_per_minute: Rate limit for requests
-            enable_behavior_mimicking: Whether to use behavior mimicking
+            enable_behavior_mimicking: Deprecated; disabled by default
             enable_session_management: Whether to manage sessions
         """
         self.rate_limiter = RateLimiter(requests_per_minute)
@@ -398,19 +397,19 @@ class AntiBanManager:
 
         self.total_requests = 0
         self.failed_requests = 0
-        self.ban_detected = False
-        self.last_ban_detection_time = 0
+        self.restriction_detected = False
+        self.last_restriction_time = 0
 
     def prepare_request(self, url: str, headers: Dict[str, str]) -> Dict[str, str]:
         """
-        Prepare request headers with anti-ban measures.
+        Prepare request headers with polite crawling defaults.
 
         Args:
             url: Request URL
             headers: Original headers
 
         Returns:
-            Modified headers with anti-ban measures
+            Modified headers
         """
         modified_headers = headers.copy()
 
@@ -428,7 +427,7 @@ class AntiBanManager:
             if referer:
                 modified_headers["Referer"] = referer
 
-        # Add realistic headers
+        # Add standard request headers
         if "Accept-Language" not in modified_headers:
             modified_headers["Accept-Language"] = "en-US,en;q=0.9"
 
@@ -440,12 +439,6 @@ class AntiBanManager:
 
         if "Connection" not in modified_headers:
             modified_headers["Connection"] = "keep-alive"
-
-        # Vary some headers slightly to avoid fingerprinting
-        if random.random() < 0.3:  # 30% chance
-            modified_headers["Cache-Control"] = random.choice(
-                ["no-cache", "max-age=0", "no-store", "must-revalidate"]
-            )
 
         return modified_headers
 
@@ -462,20 +455,20 @@ class AntiBanManager:
         Returns:
             Tuple of (should_proceed, reason_if_not)
         """
-        # Check if we're currently banned
-        if self.ban_detected:
-            time_since_ban = time.time() - self.last_ban_detection_time
-            if time_since_ban < 300:  # Wait 5 minutes after ban detection
-                return False, "Waiting after ban detection"
+        # Check if a recent access restriction requires a cool-down.
+        if self.restriction_detected:
+            time_since_restriction = time.time() - self.last_restriction_time
+            if time_since_restriction < 300:
+                return False, "Waiting after access restriction"
             else:
-                self.ban_detected = False  # Reset ban status
+                self.restriction_detected = False
 
         # Check rate limiting
         should_delay, delay_time = self.rate_limiter.should_delay()
         if should_delay and delay_time > 60:  # If delay is more than 1 minute
             return False, f"Rate limit exceeded, need to wait {delay_time:.1f} seconds"
 
-        # Check for duplicate request patterns
+        # Check for accidental duplicate request bursts
         if self.fingerprinter.is_duplicate_request(url, headers):
             return False, "Duplicate request pattern detected"
 
@@ -491,7 +484,7 @@ class AntiBanManager:
         # Rate limiting delay
         self.rate_limiter.wait_if_needed()
 
-        # Human behavior simulation
+        # Optional dwell-time delay for legacy configurations
         if self.behavior_mimicker:
             if self.behavior_mimicker.should_take_break():
                 self.behavior_mimicker.take_break()
@@ -508,7 +501,7 @@ class AntiBanManager:
         content_length: Optional[int] = None,
     ):
         """
-        Process response and update anti-ban state.
+        Process response and update polite crawling state.
 
         Args:
             url: Request URL
@@ -524,7 +517,7 @@ class AntiBanManager:
         success = 200 <= response_code < 400
         self.rate_limiter.record_request(success, response_code)
 
-        # Record request fingerprint
+        # Record request signature
         self.fingerprinter.record_request(url, headers)
 
         # Update session state
@@ -533,11 +526,11 @@ class AntiBanManager:
                 self.session_manager.update_cookies(response_cookies)
             self.session_manager.update_referer(url)
 
-        # Check for ban indicators
+        # Check for access restriction indicators
         if self.is_ban_response(response_code, response_headers):
-            self.ban_detected = True
-            self.last_ban_detection_time = time.time()
-            logger.warning(f"Ban detected! Response code: {response_code}")
+            self.restriction_detected = True
+            self.last_restriction_time = time.time()
+            logger.warning(f"Access restriction detected. Response code: {response_code}")
 
         # Track failures
         if not success:
@@ -547,27 +540,27 @@ class AntiBanManager:
         self, response_code: int, response_headers: Optional[Dict[str, str]] = None
     ) -> bool:
         """
-        Check if response indicates we've been banned.
+        Check if response indicates an access restriction.
 
         Args:
             response_code: HTTP response code
             response_headers: Response headers
 
         Returns:
-            True if ban is detected
+            True if an access restriction is detected
         """
-        # Common ban response codes
+        # Common access restriction response codes
         ban_codes = [403, 429, 503, 999]
         if response_code in ban_codes:
             return True
 
-        # Check response headers for ban indicators
+        # Check response headers for access restriction indicators
         if response_headers:
             for header_name, header_value in response_headers.items():
                 header_name_lower = header_name.lower()
                 header_value_lower = header_value.lower()
 
-                # Common ban indicators in headers
+                # Common access restriction indicators in headers
                 ban_indicators = [
                     "rate limit",
                     "too many requests",
@@ -587,7 +580,7 @@ class AntiBanManager:
 
     def get_stats(self) -> Dict[str, Any]:
         """
-        Get statistics about requests and anti-ban measures.
+        Get statistics about requests and polite crawling controls.
 
         Returns:
             Dictionary with statistics
@@ -597,7 +590,7 @@ class AntiBanManager:
             "failed_requests": self.failed_requests,
             "success_rate": (self.total_requests - self.failed_requests)
             / max(1, self.total_requests),
-            "ban_detected": self.ban_detected,
+            "restriction_detected": self.restriction_detected,
             "consecutive_errors": self.rate_limiter.consecutive_errors,
             "current_delay_multiplier": self.rate_limiter.current_delay_multiplier,
         }
@@ -611,8 +604,8 @@ class AntiBanManager:
         """Reset all statistics and state."""
         self.total_requests = 0
         self.failed_requests = 0
-        self.ban_detected = False
-        self.last_ban_detection_time = 0
+        self.restriction_detected = False
+        self.last_restriction_time = 0
         self.rate_limiter.consecutive_errors = 0
         self.rate_limiter.current_delay_multiplier = 1.0
         self.rate_limiter.request_times = []
@@ -620,96 +613,3 @@ class AntiBanManager:
         if self.behavior_mimicker:
             self.behavior_mimicker.pages_visited = 0
             self.behavior_mimicker.last_page_visit_time = 0
-
-
-class ProxyRotator:
-    """
-    Rotate through proxy servers to avoid IP-based bans.
-
-    This class manages a pool of proxy servers and rotates
-    through them to distribute requests.
-    """
-
-    def __init__(self, proxy_list: Optional[List[str]] = None):
-        """
-        Initialize proxy rotator.
-
-        Args:
-            proxy_list: List of proxy URLs (e.g., ['http://proxy1:8080', ...])
-        """
-        self.proxy_list = proxy_list or []
-        self.current_proxy_index = 0
-        self.proxy_stats = {}
-        self.failed_proxies = set()
-
-    def add_proxy(self, proxy_url: str):
-        """
-        Add a proxy to the rotation list.
-
-        Args:
-            proxy_url: Proxy URL
-        """
-        if proxy_url not in self.proxy_list:
-            self.proxy_list.append(proxy_url)
-            self.proxy_stats[proxy_url] = {"requests": 0, "failures": 0}
-
-    def get_next_proxy(self) -> Optional[str]:
-        """
-        Get the next proxy in rotation.
-
-        Returns:
-            Proxy URL or None if no proxies available
-        """
-        if not self.proxy_list:
-            return None
-
-        # Skip failed proxies
-        attempts = 0
-        while attempts < len(self.proxy_list):
-            proxy = self.proxy_list[self.current_proxy_index]
-            self.current_proxy_index = (self.current_proxy_index + 1) % len(
-                self.proxy_list
-            )
-
-            if proxy not in self.failed_proxies:
-                return proxy
-
-            attempts += 1
-
-        # If all proxies failed, reset and try again
-        if attempts >= len(self.proxy_list):
-            self.failed_proxies.clear()
-            return self.proxy_list[0] if self.proxy_list else None
-
-        return None
-
-    def record_proxy_result(self, proxy_url: str, success: bool):
-        """
-        Record the result of using a proxy.
-
-        Args:
-            proxy_url: Proxy URL
-            success: Whether the request was successful
-        """
-        if proxy_url in self.proxy_stats:
-            self.proxy_stats[proxy_url]["requests"] += 1
-            if not success:
-                self.proxy_stats[proxy_url]["failures"] += 1
-
-                # Mark proxy as failed if failure rate is too high
-                stats = self.proxy_stats[proxy_url]
-                failure_rate = stats["failures"] / stats["requests"]
-                if failure_rate > 0.5 and stats["requests"] > 5:
-                    self.failed_proxies.add(proxy_url)
-                    logger.warning(
-                        f"Proxy {proxy_url} marked as failed (failure rate: {failure_rate:.2f})"
-                    )
-
-    def get_proxy_stats(self) -> Dict[str, Dict[str, int]]:
-        """
-        Get statistics for all proxies.
-
-        Returns:
-            Dictionary with proxy statistics
-        """
-        return self.proxy_stats.copy()

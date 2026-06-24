@@ -24,7 +24,7 @@ A job-based Fandom scraper with a web frontend connected to a backend API + work
 
 ### 🕷️ **Intelligent Web Scraping**
 - **Multi-source Data Collection**: Automated extraction from multiple Fandom wiki sources
-- **Anti-ban Protection**: Respectful rate limiting and user agent rotation
+- **Polite Crawling Controls**: Descriptive User-Agent, robots.txt support, rate limiting, retries, and cache controls
 - **Robust Error Handling**: Comprehensive retry mechanisms and failure recovery
 - **Real-time Progress Tracking**: Live updates on scraping progress and statistics
 
@@ -59,10 +59,73 @@ docker compose up -d --build
 ### Open
 
 - API health: `http://localhost:18000/health`
-- Web UI: `http://localhost:18000/frontend/`
+- Web UI: `http://localhost:18000/app` or `http://localhost:18000/frontend/index.html`
+  - Dashboard: `#/`
   - New Job: `#/scraper`
+  - Crawler Process: `#/process`
   - Jobs: `#/jobs`
-  - Browse (manifest + JSONL preview): `#/browse`
+  - Browse: `#/browse`
+  - Analysis: `#/analysis`
+  - Export: `#/export`
+  - Compliance Log: `#/compliance`
+
+### 5-Minute Demo Flow
+
+Use this flow for a portfolio demo without depending on live network access.
+
+1. Create a deterministic offline job:
+
+   ```bash
+   python scripts/create_demo_wiki_job.py --output-root sample_data
+   ```
+
+   Or create a live multi-wiki campaign with five public Fandom wikis:
+
+   ```bash
+   python scripts/run_multi_wiki_campaign.py --preset portfolio-smoke
+   ```
+
+2. Start the API in demo mode:
+
+   ```bash
+   FANDOM_DEMO_MODE=true FANDOM_DEMO_ROOT=sample_data uvicorn api.main:app --reload --port 18000
+   ```
+
+3. Open the Web UI:
+
+   `http://localhost:18000/frontend/index.html`
+
+4. Walk through the product views:
+
+   Click the floating **Guide** button in the lower-right corner to run the interviewer-friendly guided walkthrough. It will move through Campaigns, Scraper, Process, Browse, Analysis, Export, and Compliance Log while highlighting the exact controls and result areas.
+
+   - `#/scraper`: create-job workflow and compliance-oriented controls.
+   - `#/campaigns`: multi-wiki campaign dashboard, per-wiki counts, events, and links to job data.
+   - `#/process`: URL normalization, robots check, API discovery, page fetch, checkpoint, export process.
+   - `#/browse`: live `wiki.db` browser for pages, categories, links, templates, images, revisions, infoboxes, and text.
+   - `#/analysis`: category bars, text terms, relationship network, and data-quality checks.
+   - `#/export`: CSV/JSON download links and Parquet availability.
+   - `#/compliance`: robots, rate limit, retry/backoff, 403/429 handling, and stop reasons.
+
+5. Open the same SQLite output in the Qt viewer:
+
+   ```bash
+   python main.py
+   ```
+
+   Then use the Wiki DB Viewer to open `sample_data/jobs/demo-onepiece-action-api-001/wiki.db`.
+
+For a live sample crawl, run a conservative MediaWiki API harvest:
+
+```bash
+python -m scraper.mediawiki.harvester \
+  --target https://onepiece.fandom.com \
+  --db /tmp/wiki.db \
+  --limit 25 \
+  --batch-size 10 \
+  --rate-delay 1.0 \
+  --parse-html-limit 10
+```
 
 ### Output Structure (per job)
 
@@ -70,7 +133,12 @@ When running via the job queue, each job writes to:
 
 `$FANDOM_DATA_ROOT/jobs/<job_id>/`
 
+The Redis/RQ job queue is opt-in for local runtime stability. Set
+`FANDOM_ENABLE_JOB_QUEUE=true` with `REDIS_URL` when running the API with a
+worker.
+
 - `manifest.json`
+- `wiki.db` (MediaWiki-native SQLite dataset when enabled)
 - `data/characters.jsonl.gz` (and `episodes/galleries/chapters` when enabled)
 - `logs/scrape.log` (rotated by size)
 
@@ -105,6 +173,19 @@ These are set in `docker-compose.yml` and can be tuned:
 ```bash
 docker run --rm --network host -v "$PWD:/app" -w /app fandom-gui-scraper-api \\
   python scripts/capture_web_screenshots.py
+```
+
+### Guided demo capture
+
+The guided capture records the floating walkthrough on desktop and mobile and writes screenshots plus Playwright `.webm` video files:
+
+```bash
+AUTH_DISABLED=true FANDOM_DEMO_MODE=true FANDOM_DEMO_ROOT=sample_data \\
+  uvicorn api.main:app --host 127.0.0.1 --port 18000
+
+GUIDED_DEMO_BASE_URL=http://127.0.0.1:18000 \\
+GUIDED_DEMO_OUT_DIR=/tmp/fandom-gui-scraper-guided-demo \\
+  python scripts/capture_guided_demo.py
 ```
 
 ## 🖥️ Desktop GUI (Optional / Legacy)

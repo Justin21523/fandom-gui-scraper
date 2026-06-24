@@ -38,6 +38,15 @@ let scraperState = {
     logs: []
 };
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 /**
  * 渲染爬蟲控制頁面
  */
@@ -46,8 +55,8 @@ export async function renderScraperPage(container) {
         <div class="page animate-fadeIn">
             <div class="page__header">
                 <div>
-                    <h1 class="page__title">Universal Fandom Scraper</h1>
-                    <p class="page__subtitle">支援任何 Fandom wiki 的通用爬蟲系統</p>
+                    <h1 class="page__title">${t('scraper.universal.title')}</h1>
+                    <p class="page__subtitle">${t('scraper.universal.subtitle')}</p>
                 </div>
             </div>
 
@@ -56,25 +65,25 @@ export async function renderScraperPage(container) {
                 <div class="scraper-config">
                     <div class="card">
                         <div class="card__header">
-                            <h3 class="card__title">爬蟲設定</h3>
+                            <h3 class="card__title">${t('scraper.universal.newJob')}</h3>
                         </div>
                         <div class="card__body">
                             <form id="universal-scraper-form">
                                 <!-- 輸入類型選擇 -->
-                                <div class="form-group">
-                                    <label class="form-label">輸入方式</label>
+                                <div class="form-group" data-tour="scraper-source">
+                                    <label class="form-label">${t('scraper.universal.inputSource')}</label>
                                     <div class="btn-group btn--block">
                                         <button type="button" class="btn flex-1 input-type-btn active" data-type="name">
                                             <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                                 <path d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"/>
                                             </svg>
-                                            動畫名稱搜尋
+                                            ${t('scraper.universal.wikiNameSearch')}
                                         </button>
                                         <button type="button" class="btn flex-1 input-type-btn" data-type="url">
                                             <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                                 <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
                                             </svg>
-                                            直接 URL
+                                            ${t('scraper.universal.urlEndpoint')}
                                         </button>
                                     </div>
                                 </div>
@@ -82,15 +91,15 @@ export async function renderScraperPage(container) {
                                 <!-- 動畫名稱搜尋 (預設顯示) -->
                                 <div id="input-mode-name">
                                     <div class="form-group">
-                                        <label class="form-label">動畫名稱</label>
+                                        <label class="form-label">${t('scraper.universal.wikiTopicName')}</label>
                                         <div class="input-group--horizontal">
                                             <input type="text" class="input" id="anime-name-input"
-                                                placeholder="例如: Attack on Titan" autocomplete="off">
+                                                placeholder="${escapeHtml(t('scraper.universal.topicPlaceholder'))}" autocomplete="off">
                                             <button type="button" class="btn btn--primary" id="search-anime-btn">
                                                 <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                                     <path d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"/>
                                                 </svg>
-                                                搜尋
+                                                ${t('common.search')}
                                             </button>
                                         </div>
                                     </div>
@@ -98,7 +107,7 @@ export async function renderScraperPage(container) {
                                     <!-- 搜尋結果 -->
                                     <div id="search-results-container" class="hidden">
                                         <div class="form-group">
-                                            <label class="form-label">搜尋結果</label>
+                                            <label class="form-label">${t('scraper.universal.searchResults')}</label>
                                             <div id="search-results-list" class="search-results-list">
                                                 <!-- 動態填充 -->
                                             </div>
@@ -109,58 +118,58 @@ export async function renderScraperPage(container) {
                                 <!-- URL 輸入 (隱藏) -->
                                 <div id="input-mode-url" class="hidden">
                                     <div class="form-group">
-                                        <label class="form-label">Fandom Wiki URL</label>
+                                        <label class="form-label">${t('scraper.universal.urlLabel')}</label>
                                         <input type="url" class="input" id="wiki-url-input"
-                                            placeholder="https://onepiece.fandom.com">
-                                        <p class="form-help">輸入完整的 Fandom wiki URL</p>
+                                            placeholder="https://onepiece.fandom.com or https://onepiece.fandom.com/api.php">
+                                        <p class="form-help">${t('scraper.universal.urlHelp')}</p>
                                     </div>
                                 </div>
 
                                 <!-- 爬取範圍 -->
-                                <div class="form-group">
-                                    <label class="form-label">爬取範圍</label>
+                                <div class="form-group" data-tour="scraper-scope">
+                                    <label class="form-label">${t('scraper.universal.contentScope')}</label>
                                     <div class="checkbox-group--vertical">
                                         <label class="checkbox-wrapper">
                                             <input type="checkbox" class="checkbox" id="crawl-characters" checked>
-                                            <span class="checkbox__label">角色資料 (Characters)</span>
+                                            <span class="checkbox__label">${t('scraper.universal.pagesCharacters')}</span>
                                         </label>
                                         <label class="checkbox-wrapper">
                                             <input type="checkbox" class="checkbox" id="crawl-episodes" checked>
-                                            <span class="checkbox__label">劇集資料 (Episodes)</span>
+                                            <span class="checkbox__label">${t('scraper.universal.categoriesEpisodes')}</span>
                                         </label>
                                         <label class="checkbox-wrapper">
                                             <input type="checkbox" class="checkbox" id="crawl-galleries" checked>
-                                            <span class="checkbox__label">圖庫資料 (Gallery)</span>
+                                            <span class="checkbox__label">${t('scraper.universal.imagesGalleries')}</span>
                                         </label>
                                         <label class="checkbox-wrapper">
                                             <input type="checkbox" class="checkbox" id="crawl-chapters">
-                                            <span class="checkbox__label">章節資料 (Chapters/Manga)</span>
+                                            <span class="checkbox__label">${t('scraper.universal.linksChapters')}</span>
                                         </label>
                                     </div>
                                 </div>
 
                                 <!-- 分類別限制 -->
-                                <details class="form-details">
-                                    <summary class="form-details__summary">分類別爬取限制</summary>
+                                <details class="form-details" data-tour="scraper-compliance">
+                                    <summary class="form-details__summary">${t('scraper.universal.limits')}</summary>
                                     <div class="form-details__content">
                                         <div class="form-group">
-                                            <label class="form-label">最大角色數</label>
+                                            <label class="form-label">${t('scraper.universal.maxPages')}</label>
                                             <input type="number" class="input" id="max-chars"
                                                 value="100" min="0" step="10">
-                                            <p class="form-help">0 = 無限制</p>
+                                            <p class="form-help">${t('scraper.universal.noLimitHelp')}</p>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">最大劇集數</label>
+                                            <label class="form-label">${t('scraper.universal.maxCategories')}</label>
                                             <input type="number" class="input" id="max-episodes"
                                                 value="50" min="0" step="10">
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">最大圖片數</label>
+                                            <label class="form-label">${t('scraper.universal.maxImages')}</label>
                                             <input type="number" class="input" id="max-gallery"
                                                 value="200" min="0" step="50">
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">最大章節數</label>
+                                            <label class="form-label">${t('scraper.universal.maxLinks')}</label>
                                             <input type="number" class="input" id="max-chapters"
                                                 value="50" min="0" step="10">
                                         </div>
@@ -169,46 +178,46 @@ export async function renderScraperPage(container) {
 
                                 <!-- 進階設定 -->
                                 <details class="form-details">
-                                    <summary class="form-details__summary">進階設定</summary>
+                                    <summary class="form-details__summary">${t('scraper.universal.complianceExport')}</summary>
                                     <div class="form-details__content">
                                         <div class="form-group">
-                                            <label class="form-label">請求延遲 (秒)</label>
+                                            <label class="form-label">${t('scraper.universal.requestDelay')}</label>
                                             <input type="number" class="input" id="delay"
                                                 value="1" min="0" max="10" step="0.5">
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">重試次數</label>
+                                            <label class="form-label">${t('scraper.universal.retries')}</label>
                                             <input type="number" class="input" id="retries"
                                                 value="3" min="0" max="10">
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">儲存/空間</label>
+                                            <label class="form-label">${t('scraper.universal.runtimeControls')}</label>
                                             <div class="checkbox-group--vertical">
                                                 <label class="checkbox-label">
                                                     <input type="checkbox" id="use-playwright">
-                                                    <span>一開始就使用 Playwright（較慢，但更能抗封鎖）</span>
+                                                    <span>${t('scraper.universal.usePlaywright')}</span>
                                                 </label>
                                                 <label class="checkbox-label">
                                                     <input type="checkbox" id="use-playwright-detail">
-                                                    <span>Detail pages 使用 Playwright（更慢，但遇到 JS/封鎖更穩）</span>
+                                                    <span>${t('scraper.universal.usePlaywrightDetail')}</span>
                                                 </label>
                                                 <label class="checkbox-label">
                                                     <input type="checkbox" id="download-images">
-                                                    <span>下載圖片（非常佔空間，預設關閉）</span>
+                                                    <span>${t('scraper.universal.downloadImages')}</span>
                                                 </label>
                                                 <label class="checkbox-label">
                                                     <input type="checkbox" id="export-gzip" checked>
-                                                    <span>JSON 壓縮（.gz）</span>
+                                                    <span>${t('scraper.universal.compressJson')}</span>
                                                 </label>
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">JSON 輸出模式</label>
+                                            <label class="form-label">${t('scraper.universal.jsonExportMode')}</label>
                                             <select class="input" id="export-mode">
-                                                <option value="jsonl" selected>jsonl（單檔追加，檔案數最少）</option>
-                                                <option value="per_item">per_item（每筆 1 檔，易讀但檔案很多）</option>
+                                                <option value="jsonl" selected>${t('scraper.universal.exportJsonl')}</option>
+                                                <option value="per_item">${t('scraper.universal.exportPerItem')}</option>
                                             </select>
-                                            <p class="form-help">建議使用 jsonl + gzip 來降低檔案數與容量</p>
+                                            <p class="form-help">${t('scraper.universal.exportModeHelp')}</p>
                                         </div>
                                     </div>
                                 </details>
@@ -219,20 +228,20 @@ export async function renderScraperPage(container) {
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
                                         </svg>
-                                        開始爬取
+                                        ${t('scraper.universal.startCrawl')}
                                     </button>
                                     <div class="btn-group btn--block mt-sm hidden" id="control-buttons">
                                         <button type="button" class="btn btn--warning flex-1" id="pause-btn">
                                             <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                             </svg>
-                                            暫停
+                                            ${t('scraper.universal.pause')}
                                         </button>
                                         <button type="button" class="btn btn--danger flex-1" id="stop-btn">
                                             <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>
                                             </svg>
-                                            停止
+                                            ${t('scraper.universal.stop')}
                                         </button>
                                     </div>
                                 </div>
@@ -243,7 +252,7 @@ export async function renderScraperPage(container) {
                     <!-- 歷史記錄 -->
                     <div class="card mt-lg">
                         <div class="card__header">
-                            <h3 class="card__title">爬取歷史</h3>
+                            <h3 class="card__title">${t('scraper.universal.recentRuns')}</h3>
                             <button class="btn btn--sm btn--ghost" id="refresh-history-btn">
                                 <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                     <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
@@ -253,7 +262,7 @@ export async function renderScraperPage(container) {
                         <div class="card__body p-0">
                             <div class="history-list" id="history-list">
                                 <div class="empty-state p-lg">
-                                    <p class="text-muted">載入中...</p>
+                                    <p class="text-muted">${t('common.loading')}</p>
                                 </div>
                             </div>
                         </div>
@@ -262,7 +271,7 @@ export async function renderScraperPage(container) {
                     <!-- 最近任務 -->
                     <div class="card mt-lg">
                         <div class="card__header">
-                            <h3 class="card__title">最近任務</h3>
+                            <h3 class="card__title">${t('scraper.universal.recentJobs')}</h3>
                             <button class="btn btn--sm btn--ghost" id="refresh-jobs-btn">
                                 <svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon">
                                     <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
@@ -270,7 +279,7 @@ export async function renderScraperPage(container) {
                             </button>
                         </div>
                         <div class="card__body">
-                            <div id="jobs-list" class="text-sm text-muted">載入中...</div>
+                            <div id="jobs-list" class="text-sm text-muted">${t('common.loading')}</div>
                         </div>
                     </div>
                 </div>
@@ -278,28 +287,28 @@ export async function renderScraperPage(container) {
                 <!-- 右側：狀態和日誌 -->
                 <div class="scraper-status">
                     <!-- 狀態卡片 -->
-                    <div class="card mb-lg">
+                    <div class="card mb-lg" data-tour="scraper-progress">
                         <div class="card__header">
-                            <h3 class="card__title">爬取進度</h3>
-                            <span class="badge" id="status-badge">閒置中</span>
+                            <h3 class="card__title">${t('scraper.universal.crawlProgress')}</h3>
+                            <span class="badge" id="status-badge">${t('status.idle')}</span>
                         </div>
                         <div class="card__body">
                             <!-- 整體進度 -->
                             <div class="progress-stats mb-lg">
                                 <div class="progress-stat">
-                                    <span class="progress-stat__label">動畫</span>
+                                    <span class="progress-stat__label">${t('scraper.universal.topic')}</span>
                                     <span class="progress-stat__value" id="stat-anime">-</span>
                                 </div>
                                 <div class="progress-stat">
-                                    <span class="progress-stat__label">總計完成</span>
+                                    <span class="progress-stat__label">${t('scraper.progress.completed')}</span>
                                     <span class="progress-stat__value text-success" id="stat-overall">0</span>
                                 </div>
                                 <div class="progress-stat">
-                                    <span class="progress-stat__label">速度</span>
+                                    <span class="progress-stat__label">${t('scraper.progress.speed')}</span>
                                     <span class="progress-stat__value" id="stat-speed">-</span>
                                 </div>
                                 <div class="progress-stat">
-                                    <span class="progress-stat__label">預計時間</span>
+                                    <span class="progress-stat__label">${t('scraper.progress.eta')}</span>
                                     <span class="progress-stat__value" id="stat-eta">-</span>
                                 </div>
                             </div>
@@ -309,7 +318,7 @@ export async function renderScraperPage(container) {
                                 <!-- Characters -->
                                 <div class="category-progress-item" data-category="characters">
                                     <div class="category-progress-header">
-                                        <span class="category-progress-name">角色</span>
+                                        <span class="category-progress-name">${t('scraper.universal.pagesCharacters')}</span>
                                         <span class="category-progress-value">0 / 0</span>
                                     </div>
                                     <div class="progress progress--sm">
@@ -320,7 +329,7 @@ export async function renderScraperPage(container) {
                                 <!-- Episodes -->
                                 <div class="category-progress-item" data-category="episodes">
                                     <div class="category-progress-header">
-                                        <span class="category-progress-name">劇集</span>
+                                        <span class="category-progress-name">${t('scraper.universal.categoriesEpisodes')}</span>
                                         <span class="category-progress-value">0 / 0</span>
                                     </div>
                                     <div class="progress progress--sm">
@@ -331,7 +340,7 @@ export async function renderScraperPage(container) {
                                 <!-- Galleries -->
                                 <div class="category-progress-item" data-category="galleries">
                                     <div class="category-progress-header">
-                                        <span class="category-progress-name">圖庫</span>
+                                        <span class="category-progress-name">${t('scraper.universal.imagesGalleries')}</span>
                                         <span class="category-progress-value">0 / 0</span>
                                     </div>
                                     <div class="progress progress--sm">
@@ -342,7 +351,7 @@ export async function renderScraperPage(container) {
                                 <!-- Chapters -->
                                 <div class="category-progress-item" data-category="chapters">
                                     <div class="category-progress-header">
-                                        <span class="category-progress-name">章節</span>
+                                        <span class="category-progress-name">${t('scraper.universal.linksChapters')}</span>
                                         <span class="category-progress-value">0 / 0</span>
                                     </div>
                                     <div class="progress progress--sm">
@@ -356,21 +365,21 @@ export async function renderScraperPage(container) {
                     <!-- 日誌面板 -->
                     <div class="card">
                         <div class="card__header">
-                            <h3 class="card__title">即時日誌</h3>
+                            <h3 class="card__title">${t('scraper.universal.liveLogs')}</h3>
                             <div class="flex gap-sm">
                                 <label class="checkbox checkbox--sm">
                                     <input type="checkbox" id="auto-scroll" checked>
                                     <span class="checkbox__mark"></span>
-                                    <span class="checkbox__label">自動捲動</span>
+                                    <span class="checkbox__label">${t('scraper.logs.autoScroll')}</span>
                                 </label>
                                 <button class="btn btn--sm btn--ghost" id="clear-logs">
-                                    清除
+                                    ${t('common.clear')}
                                 </button>
                             </div>
                         </div>
                         <div class="card__body p-0">
                             <div class="log-viewer" id="log-viewer">
-                                <div class="log-empty">等待開始...</div>
+                                <div class="log-empty">${t('scraper.universal.waiting')}</div>
                             </div>
                         </div>
                     </div>
@@ -451,22 +460,22 @@ async function performAnimeSearch(container) {
     const animeName = input.value.trim();
 
     if (!animeName) {
-        toast.warning('請輸入動畫名稱');
+        toast.warning(t('scraper.universal.enterTopic'));
         return;
     }
 
     const searchBtn = container.querySelector('#search-anime-btn');
     const originalText = searchBtn.innerHTML;
     searchBtn.disabled = true;
-    searchBtn.innerHTML = '<span class="loading-spinner loading-spinner--sm"></span> 搜尋中...';
+    searchBtn.innerHTML = `<span class="loading-spinner loading-spinner--sm"></span> ${t('scraper.universal.searching')}`;
 
     try {
         const results = await searchAnime(animeName, 5);
         scraperState.animeSearchResults = results;
         renderSearchResults(container, results);
-        toast.success(`找到 ${results.length} 個結果`);
+        toast.success(t('scraper.universal.resultsFound', { count: results.length }));
     } catch (error) {
-        toast.error(`搜尋失敗: ${error.message}`);
+        toast.error(t('scraper.universal.searchFailed', { message: error.message }));
         console.error('Search error:', error);
     } finally {
         searchBtn.disabled = false;
@@ -491,9 +500,9 @@ function renderSearchResults(container, results) {
     resultsList.innerHTML = results.map((result, index) => `
         <div class="search-result-item ${index === 0 ? 'active' : ''}" data-index="${index}">
             <div class="search-result-info">
-                <div class="search-result-title">${result.title}</div>
-                <div class="search-result-url text-muted">${result.url}</div>
-                ${result.description ? `<div class="search-result-desc text-sm">${result.description}</div>` : ''}
+                <div class="search-result-title">${escapeHtml(result.title)}</div>
+                <div class="search-result-url text-muted">${escapeHtml(result.url)}</div>
+                ${result.description ? `<div class="search-result-desc text-sm">${escapeHtml(result.description)}</div>` : ''}
             </div>
             <div class="search-result-score">
                 <span class="badge badge--${result.relevance_score >= 80 ? 'success' : 'default'}">
@@ -525,14 +534,14 @@ async function startUniversalScraping(container) {
     let inputSource;
     if (scraperState.inputType === 'name') {
         if (!scraperState.selectedWiki) {
-            toast.warning('請先搜尋並選擇一個 wiki');
+            toast.warning(t('scraper.universal.selectWikiFirst'));
             return;
         }
         inputSource = scraperState.selectedWiki.url;
     } else {
         inputSource = container.querySelector('#wiki-url-input').value.trim();
         if (!inputSource) {
-            toast.warning('請輸入 wiki URL');
+            toast.warning(t('scraper.universal.enterWikiUrl'));
             return;
         }
     }
@@ -561,7 +570,7 @@ async function startUniversalScraping(container) {
     // 驗證至少選擇一個類別
     if (!config.crawl_characters && !config.crawl_episodes &&
         !config.crawl_galleries && !config.crawl_chapters) {
-        toast.warning('請至少選擇一個爬取範圍');
+        toast.warning(t('scraper.universal.selectScope'));
         return;
     }
 
@@ -570,10 +579,10 @@ async function startUniversalScraping(container) {
         updateStatus(container, 'running');
         scraperState.logs = [];
         await loadJobs(container);
-        toast.success('Universal Scraper 已啟動');
-        addLog(container, { level: 'info', message: `Universal Scraper 已啟動 (Job: ${result.job_id || '-'})`, timestamp: new Date() });
+        toast.success(t('scraper.universal.started'));
+        addLog(container, { level: 'info', message: t('scraper.universal.startedJob', { id: result.job_id || '-' }), timestamp: new Date() });
     } catch (error) {
-        toast.error(`啟動失敗: ${error.message}`);
+        toast.error(t('scraper.universal.startFailed', { message: error.message }));
         console.error('Start error:', error);
     }
 }
@@ -585,7 +594,7 @@ async function loadJobs(container) {
     try {
         const jobs = await listUniversalJobs(10);
         if (!jobs || jobs.length === 0) {
-            listEl.innerHTML = '<div class="empty-state">暫無任務</div>';
+            listEl.innerHTML = `<div class="empty-state">${t('scraper.universal.noJobs')}</div>`;
             return;
         }
 
@@ -595,10 +604,10 @@ async function loadJobs(container) {
             return `
                 <div class="flex items-center justify-between gap-sm mb-sm">
                     <div class="flex-1">
-                        <div class="text-sm"><strong>${j.job_id}</strong> <span class="text-muted">(${j.status})</span></div>
-                        <div class="text-xs text-muted">${created} • ${source}</div>
+                        <div class="text-sm"><strong>${escapeHtml(j.job_id)}</strong> <span class="text-muted">(${escapeHtml(j.status)})</span></div>
+                        <div class="text-xs text-muted">${escapeHtml(created)} • ${escapeHtml(source)}</div>
                     </div>
-                    <button class="btn btn--sm btn--ghost" data-job-select="${j.job_id}">切換</button>
+                    <button class="btn btn--sm btn--ghost" data-job-select="${escapeHtml(j.job_id)}">${t('scraper.universal.switchJob')}</button>
                 </div>
             `;
         }).join('');
@@ -609,7 +618,7 @@ async function loadJobs(container) {
                 try {
                     await selectUniversalJob(jobId);
                     await loadCurrentStatus(container);
-                    toast.info(`已切換到任務 ${jobId}`);
+                    toast.info(t('scraper.universal.jobSelected', { id: jobId }));
                 } catch (e) {
                     toast.error(e.message);
                 }
@@ -617,7 +626,7 @@ async function loadJobs(container) {
         });
 
     } catch (e) {
-        listEl.innerHTML = '<div class="text-muted">載入失敗</div>';
+        listEl.innerHTML = `<div class="text-muted">${t('scraper.universal.loadFailed')}</div>`;
     }
 }
 
@@ -629,11 +638,11 @@ async function togglePause(container) {
         if (scraperState.status === 'paused') {
             await resumeUniversalScraper();
             updateStatus(container, 'running');
-            toast.info('已繼續');
+            toast.info(t('scraper.universal.resumed'));
         } else {
             await pauseUniversalScraper();
             updateStatus(container, 'paused');
-            toast.info('已暫停');
+            toast.info(t('scraper.universal.paused'));
         }
     } catch (error) {
         toast.error(error.message);
@@ -647,7 +656,7 @@ async function stopScraping(container) {
     try {
         await stopUniversalScraper();
         updateStatus(container, 'idle');
-        toast.info('已停止');
+        toast.info(t('scraper.universal.stopped'));
     } catch (error) {
         toast.error(error.message);
     }
@@ -685,7 +694,7 @@ function connectWebSocket(container) {
     wsManager.on('universalScraperComplete', (data) => {
         scraperState.status = 'idle';
         updateStatus(container, 'idle');
-        toast.success(`爬取完成！共完成 ${data.overall_completed} 項`);
+        toast.success(t('scraper.universal.completed', { count: data.overall_completed }));
     });
 
     wsManager.on('universalScraperError', (data) => {
@@ -714,10 +723,10 @@ function updateStatus(container, status) {
     const pauseBtn = container.querySelector('#pause-btn');
 
     const statusConfig = {
-        idle: { text: '閒置中', class: 'badge--default' },
-        running: { text: '運行中', class: 'badge--success' },
-        paused: { text: '已暫停', class: 'badge--warning' },
-        stopped: { text: '已停止', class: 'badge--error' }
+        idle: { text: t('status.idle'), class: 'badge--default' },
+        running: { text: t('status.running'), class: 'badge--success' },
+        paused: { text: t('scraper.status.paused'), class: 'badge--warning' },
+        stopped: { text: t('status.stopped'), class: 'badge--error' }
     };
 
     const config = statusConfig[status] || statusConfig.idle;
@@ -735,8 +744,8 @@ function updateStatus(container, status) {
 
     if (pauseBtn) {
         pauseBtn.innerHTML = status === 'paused'
-            ? '<svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>繼續'
-            : '<svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>暫停';
+            ? `<svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>${t('scraper.universal.resume')}`
+            : `<svg viewBox="0 0 20 20" fill="currentColor" class="btn__icon"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>${t('scraper.universal.pause')}`;
     }
 }
 
@@ -766,7 +775,7 @@ function updateProgress(container, progress, animeName = null) {
         // 如果類別未啟用，隱藏進度條
         if (!categoryData.enabled) {
             item.style.opacity = '0.4';
-            item.querySelector('.category-progress-value').textContent = '未啟用';
+            item.querySelector('.category-progress-value').textContent = t('scraper.universal.disabled');
             return;
         }
 
@@ -805,7 +814,7 @@ function updateLogs(container) {
     if (!viewer) return;
 
     if (scraperState.logs.length === 0) {
-        viewer.innerHTML = '<div class="log-empty">等待開始...</div>';
+        viewer.innerHTML = `<div class="log-empty">${t('scraper.universal.waiting')}</div>`;
         return;
     }
 
@@ -820,8 +829,8 @@ function updateLogs(container) {
 
         return `<div class="log-line ${levelClass}">
             <span class="log-time">${time}</span>
-            <span class="log-level">${log.level?.toUpperCase() || 'INFO'}</span>
-            <span class="log-message">${log.message}</span>
+            <span class="log-level">${escapeHtml(log.level?.toUpperCase() || 'INFO')}</span>
+            <span class="log-message">${escapeHtml(log.message)}</span>
         </div>`;
     }).join('');
 
@@ -851,7 +860,7 @@ async function loadHistory(container) {
         if (!history || history.length === 0) {
             historyList.innerHTML = `
                 <div class="empty-state p-lg">
-                    <p class="text-muted">暫無爬取歷史記錄</p>
+                    <p class="text-muted">${t('scraper.universal.noHistory')}</p>
                 </div>
             `;
             return;
@@ -864,12 +873,12 @@ async function loadHistory(container) {
             return `
                 <div class="history-item">
                     <div class="history-item__info">
-                        <div class="history-item__url">${entry.base_url || '未知'}</div>
-                        <div class="history-item__date">${date}</div>
+                        <div class="history-item__url">${escapeHtml(entry.base_url || t('common.noData'))}</div>
+                        <div class="history-item__date">${escapeHtml(date)}</div>
                     </div>
                     <div class="history-item__stats">
-                        <span class="badge badge--success">${result.completed || 0} 完成</span>
-                        ${result.failed > 0 ? `<span class="badge badge--error">${result.failed} 失敗</span>` : ''}
+                        <span class="badge badge--success">${escapeHtml(t('scraper.universal.completedCount', { count: result.completed || 0 }))}</span>
+                        ${result.failed > 0 ? `<span class="badge badge--error">${escapeHtml(t('scraper.universal.failedCount', { count: result.failed }))}</span>` : ''}
                     </div>
                 </div>
             `;
@@ -879,7 +888,7 @@ async function loadHistory(container) {
         console.error('Failed to load history:', error);
         historyList.innerHTML = `
             <div class="empty-state p-lg">
-                <p class="text-muted">載入歷史記錄失敗</p>
+                <p class="text-muted">${t('scraper.universal.historyFailed')}</p>
             </div>
         `;
     }

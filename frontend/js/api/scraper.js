@@ -235,12 +235,62 @@ export async function previewUniversalJobFile(jobId, path, limit = 200) {
     return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/file-preview`, { path, limit });
 }
 
+export async function getUniversalJobWikiSummary(jobId) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/wiki-db/summary`);
+}
+
+export async function getUniversalJobWikiTables(jobId) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/wiki-db/tables`);
+}
+
+export async function browseUniversalJobWikiTable(jobId, dataset, options = {}) {
+    const { limit = 100, offset = 0, q = '' } = options;
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/wiki-db/table/${encodeURIComponent(dataset)}`, { limit, offset, q });
+}
+
+export async function getUniversalJobWikiPage(jobId, pageId) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/wiki-db/pages/${encodeURIComponent(pageId)}`);
+}
+
+export async function getUniversalJobWikiAnalysis(jobId) {
+    return api.get(`/scraper/jobs/${encodeURIComponent(jobId)}/wiki-db/analysis`);
+}
+
+export function buildUniversalJobWikiExportUrl(jobId, dataset = 'pages', format = 'csv') {
+    const base = api._buildURL(`/scraper/jobs/${encodeURIComponent(jobId)}/wiki-db/export`, { dataset, format });
+    return base;
+}
+
 export async function cleanupUniversalJobs() {
     return api.post('/scraper/jobs/cleanup');
 }
 
 export async function deleteUniversalJob(jobId) {
     return api.post(`/scraper/jobs/${encodeURIComponent(jobId)}/delete`);
+}
+
+export async function listCampaigns(limit = 20) {
+    return api.get('/scraper/campaigns', { limit });
+}
+
+export async function listCampaignPresets() {
+    return api.get('/scraper/campaigns/presets');
+}
+
+export async function getCampaign(campaignId) {
+    return api.get(`/scraper/campaigns/${encodeURIComponent(campaignId)}`);
+}
+
+export async function getCampaignEvents(campaignId, limit = 500) {
+    return api.get(`/scraper/campaigns/${encodeURIComponent(campaignId)}/events`, { limit });
+}
+
+export async function getCampaignAnalysis(campaignId) {
+    return api.get(`/scraper/campaigns/${encodeURIComponent(campaignId)}/analysis`);
+}
+
+export async function runCampaign(config = {}) {
+    return api.post('/scraper/campaigns/run', config);
 }
 
 export default {
@@ -276,6 +326,18 @@ export default {
     listUniversalJobFiles,
     getUniversalJobManifest,
     previewUniversalJobFile,
+    getUniversalJobWikiSummary,
+    getUniversalJobWikiTables,
+    browseUniversalJobWikiTable,
+    getUniversalJobWikiPage,
+    getUniversalJobWikiAnalysis,
+    buildUniversalJobWikiExportUrl,
     cleanupUniversalJobs,
-    deleteUniversalJob
+    deleteUniversalJob,
+    listCampaigns,
+    listCampaignPresets,
+    getCampaign,
+    getCampaignEvents,
+    getCampaignAnalysis,
+    runCampaign
 };

@@ -4,11 +4,12 @@
  */
 
 import { router } from './router.js';
-import { initI18n, updatePageTranslations } from './i18n/i18n.js';
+import { initI18n, updatePageTranslations, t } from './i18n/i18n.js';
 import { globalStore } from './stores/store.js';
 import { authStore, isTokenExpired } from './stores/authStore.js';
 import { renderHeader } from './components/header.js';
 import { renderSidebar, updateActiveLink } from './components/sidebar.js';
+import { initDemoGuide } from './components/demoGuide.js';
 
 // 頁面模組
 import { renderHomePage } from './pages/home.js';
@@ -20,7 +21,12 @@ import { renderChartsPage } from './pages/charts.js';
 import { renderMediaPage } from './pages/media.js';
 import { renderCharacterDetailPage } from './pages/characterDetail.js';
 import { renderJobsPage } from './pages/jobs.js';
+import { renderCampaignsPage } from './pages/campaigns.js';
 import { renderBrowsePage } from './pages/browse.js';
+import { renderProcessPage } from './pages/process.js';
+import { renderAnalysisPage } from './pages/analysis.js';
+import { renderExportPage } from './pages/export.js';
+import { renderCompliancePage } from './pages/compliance.js';
 
 // 容器元素
 let headerEl, sidebarEl, mainContentEl;
@@ -51,6 +57,9 @@ async function initApp() {
     // 啟動路由
     router.start();
 
+    // 啟動作品集導覽小幫手
+    initDemoGuide({ router });
+
     // 隱藏載入畫面
     hideLoading();
 
@@ -62,8 +71,10 @@ async function initApp() {
  */
 function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    globalStore.setState({ theme: savedTheme });
+    const normalizedTheme = savedTheme === 'dark' ? 'indigo' : savedTheme;
+    document.documentElement.setAttribute('data-theme', normalizedTheme);
+    localStorage.setItem('theme', normalizedTheme);
+    globalStore.setState({ theme: normalizedTheme });
 }
 
 /**
@@ -117,17 +128,22 @@ function setupRouter() {
 
         // 更新頁面標題
         const titles = {
-            '/': 'Dashboard',
-            '/characters': 'Characters',
-            '/scraper': 'Scraper',
-            '/jobs': 'Jobs',
-            '/browse': 'Browse',
-            '/charts': 'Charts',
-            '/media': 'Media',
-            '/settings': 'Settings',
-            '/login': 'Login'
+            '/': 'home.title',
+            '/characters': 'characters.title',
+            '/scraper': 'scraper.title',
+            '/jobs': 'nav.jobs',
+            '/campaigns': 'portfolio.campaigns.title',
+            '/browse': 'portfolio.browse.title',
+            '/process': 'portfolio.process.title',
+            '/analysis': 'portfolio.analysis.title',
+            '/export': 'portfolio.export.title',
+            '/compliance': 'portfolio.compliance.title',
+            '/charts': 'charts.title',
+            '/media': 'media.title',
+            '/settings': 'settings.title',
+            '/login': 'auth.login'
         };
-        document.title = `${titles[to.path] || 'Page'} - Fandom Scraper`;
+        document.title = `${titles[to.path] ? t(titles[to.path]) : 'Page'} - Fandom Scraper`;
     });
 
     // 註冊路由
@@ -156,9 +172,29 @@ function setupRouter() {
             handler: (route) => renderJobsPage(mainContentEl, route),
             meta: { title: 'Jobs' }
         },
+        '/campaigns': {
+            handler: (route) => renderCampaignsPage(mainContentEl, route),
+            meta: { title: 'Campaigns' }
+        },
         '/browse': {
             handler: (route) => renderBrowsePage(mainContentEl, route),
             meta: { title: 'Browse' }
+        },
+        '/process': {
+            handler: (route) => renderProcessPage(mainContentEl, route),
+            meta: { title: 'Crawler Process' }
+        },
+        '/analysis': {
+            handler: (route) => renderAnalysisPage(mainContentEl, route),
+            meta: { title: 'Analysis' }
+        },
+        '/export': {
+            handler: (route) => renderExportPage(mainContentEl, route),
+            meta: { title: 'Export' }
+        },
+        '/compliance': {
+            handler: (route) => renderCompliancePage(mainContentEl, route),
+            meta: { title: 'Compliance' }
         },
         '/charts': {
             handler: (route) => renderChartsPage(mainContentEl, route),
