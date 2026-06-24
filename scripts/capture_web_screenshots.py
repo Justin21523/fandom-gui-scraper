@@ -17,14 +17,19 @@ VIEWPORTS = {
     "mobile": {"width": 390, "height": 844},
 }
 
+MAX_SECTION_HEIGHT = {
+    "desktop": 900,
+    "mobile": 780,
+}
+
 TARGETS = [
-    ("campaigns", f"{BASE_URL}{APP_PATH}#/campaigns"),
-    ("browse", f"{BASE_URL}{APP_PATH}#/browse"),
-    ("analysis", f"{BASE_URL}{APP_PATH}#/analysis"),
-    ("process", f"{BASE_URL}{APP_PATH}#/process"),
-    ("export", f"{BASE_URL}{APP_PATH}#/export"),
-    ("compliance", f"{BASE_URL}{APP_PATH}#/compliance"),
-    ("scraper", f"{BASE_URL}{APP_PATH}#/scraper"),
+    ("campaigns", f"{BASE_URL}{APP_PATH}#/campaigns", '[data-tour="campaigns-overview"]'),
+    ("browse", f"{BASE_URL}{APP_PATH}#/browse", '[data-tour="browse-datasets"]'),
+    ("analysis", f"{BASE_URL}{APP_PATH}#/analysis", '[data-tour="analysis-network"]'),
+    ("process", f"{BASE_URL}{APP_PATH}#/process", '[data-tour="process-timeline"]'),
+    ("export", f"{BASE_URL}{APP_PATH}#/export", '[data-tour="export-center"]'),
+    ("compliance", f"{BASE_URL}{APP_PATH}#/compliance", '[data-tour="compliance-log"]'),
+    ("scraper", f"{BASE_URL}{APP_PATH}#/scraper", '[data-tour="scraper-source"]'),
 ]
 
 
@@ -58,6 +63,22 @@ def inspect_page(page) -> dict:
             };
         }"""
     )
+
+
+def capture_target(page, target, screenshot_path: Path, viewport_name: str) -> None:
+    target.scroll_into_view_if_needed(timeout=10_000)
+    page.wait_for_timeout(350)
+    box = target.bounding_box()
+    if not box:
+        target.screenshot(path=str(screenshot_path))
+        return
+    clip = {
+        "x": max(0, box["x"]),
+        "y": max(0, box["y"]),
+        "width": min(box["width"], page.viewport_size["width"] - max(0, box["x"])),
+        "height": min(box["height"], MAX_SECTION_HEIGHT[viewport_name]),
+    }
+    page.screenshot(path=str(screenshot_path), clip=clip)
 
 
 def main() -> int:
@@ -97,7 +118,7 @@ def main() -> int:
                     };
                 }"""
             )
-            for page_name, url in TARGETS:
+            for page_name, url, selector in TARGETS:
                 filename = f"web_{page_name}_{viewport_name}.png"
                 page.goto(url, wait_until="networkidle", timeout=120_000)
                 page.wait_for_function("() => document.documentElement.lang && document.querySelector('#main-content h1')")
@@ -110,9 +131,14 @@ def main() -> int:
                     }"""
                 )
                 page.wait_for_timeout(1000)
-                page.screenshot(path=str(OUT_DIR / filename), full_page=True)
+                target = page.locator(selector).first
+                if target.count() > 0:
+                    capture_target(page, target, OUT_DIR / filename, viewport_name)
+                else:
+                    # 目標缺失時保留 viewport 截圖，報告會暴露 body/overflow 狀態。
+                    page.screenshot(path=str(OUT_DIR / filename), full_page=False)
                 details = inspect_page(page)
-                details.update({"page": page_name, "viewport": viewport_name, "url": url, "screenshot": filename})
+                details.update({"page": page_name, "viewport": viewport_name, "url": url, "selector": selector, "screenshot": filename})
                 report["pages"].append(details)
                 print(f"{viewport_name:7s} {page_name:10s} {OUT_DIR / filename}")
             page.close()

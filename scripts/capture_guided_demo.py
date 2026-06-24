@@ -15,6 +15,26 @@ REQUESTED_OUT_DIR = Path(os.getenv("GUIDED_DEMO_OUT_DIR", "docs/images/guided-de
 
 VIEWPORT = {"width": 1440, "height": 940}
 MOBILE_VIEWPORT = {"width": 390, "height": 844}
+MAX_SECTION_HEIGHT = {
+    "desktop": 980,
+    "mobile": 820,
+}
+
+STEP_SHOTS = [
+    ("campaigns-overview", "campaigns-overview"),
+    ("campaign-preset", "campaign-preset"),
+    ("campaign-events", "campaign-events"),
+    ("scraper-source", "scraper-source"),
+    ("scraper-compliance", "scraper-compliance"),
+    ("scraper-progress", "scraper-progress"),
+    ("process-timeline", "process-timeline"),
+    ("browse-runs", "browse-runs"),
+    ("browse-datasets", "browse-datasets"),
+    ("analysis-network", "analysis-network"),
+    ("analysis-quality", "analysis-quality"),
+    ("export-center", "export-center"),
+    ("compliance-log", "compliance-log"),
+]
 
 
 def writable_output_dir(path: Path) -> Path:
@@ -65,6 +85,22 @@ def prepare_page(page) -> None:
     )
 
 
+def capture_target(page, target, screenshot_path: Path, label: str) -> None:
+    target.scroll_into_view_if_needed(timeout=10_000)
+    page.wait_for_timeout(350)
+    box = target.bounding_box()
+    if not box:
+        target.screenshot(path=str(screenshot_path))
+        return
+    clip = {
+        "x": max(0, box["x"]),
+        "y": max(0, box["y"]),
+        "width": min(box["width"], page.viewport_size["width"] - max(0, box["x"])),
+        "height": min(box["height"], MAX_SECTION_HEIGHT[label]),
+    }
+    page.screenshot(path=str(screenshot_path), clip=clip)
+
+
 def capture_flow(page, out_dir: Path, label: str, viewport: dict) -> list[dict]:
     page.set_viewport_size(viewport)
     page.goto(f"{BASE_URL}{APP_PATH}#/campaigns", wait_until="networkidle", timeout=120_000)
@@ -80,8 +116,14 @@ def capture_flow(page, out_dir: Path, label: str, viewport: dict) -> list[dict]:
         except PlaywrightTimeoutError:
             page.wait_for_selector(".demo-guide__warning", timeout=2_000)
         details = inspect_page(page)
-        screenshot = f"guided_{label}_step_{index + 1:02d}.png"
-        page.screenshot(path=str(out_dir / screenshot), full_page=True)
+        step_id, shot_name = STEP_SHOTS[index]
+        screenshot = f"{label}-step-{index + 1:02d}-{shot_name}.png"
+        target = page.locator(f'[data-tour="{step_id}"]').first
+        if target.count() > 0:
+            capture_target(page, target, out_dir / screenshot, label)
+        else:
+            # 找不到目標時保留 viewport 截圖，方便 debug 導覽跳轉問題。
+            page.screenshot(path=str(out_dir / screenshot), full_page=False)
         details.update({"step": index + 1, "viewport": label, "screenshot": screenshot})
         results.append(details)
         if details["hash"].startswith("#/login"):

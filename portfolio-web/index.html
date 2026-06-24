@@ -1,67 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fandom / MediaWiki Scraper Platform — Portfolio Demo</title>
+    <title>Fandom / MediaWiki Scraper Platform | Portfolio Demo</title>
     <meta
       name="description"
-      content="Portfolio demo for a Fandom / MediaWiki wiki data scraper and analysis platform with PyQt, FastAPI, and a web workflow UI."
+      content="Fandom / MediaWiki wiki data scraper and analysis platform portfolio demo."
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="wrap">
+    <main class="shell">
       <header class="hero">
-        <div>
-          <p class="kicker">Portfolio Demo</p>
-          <h1>Fandom / MediaWiki Scraper Platform</h1>
-          <p class="sub">
-            A desktop + web data platform for API-first wiki crawling, compliant runtime controls,
-            browsing, analysis, and export workflows.
-          </p>
+        <p class="eyebrow">Portfolio Live Demo</p>
+        <h1>Fandom / MediaWiki Scraper Platform</h1>
+        <p class="lead">
+          API-first wiki crawler、SQLite data pipeline、Browse / Analysis / Export
+          dashboard，以及面試導覽小幫手的完整展示版本。
+        </p>
+        <div class="actions" aria-label="Demo links">
+          <a class="button button-primary" href="/app#/campaigns">開啟互動 Demo</a>
+          <a class="button" href="#walkthrough">觀看導覽錄影</a>
         </div>
       </header>
 
-      <section class="card">
-        <h2>Demo Status</h2>
-        <ul>
-          <li>The PyQt GUI remains the desktop control surface.</li>
-          <li>The web demo mirrors the same workflow for portfolio review.</li>
-          <li>Demo mode uses a small public Fandom sample dataset; live mode can read local API jobs.</li>
-        </ul>
+      <section class="overview" aria-label="Project workflow summary">
+        <article>
+          <span>01</span>
+          <h2>合規爬取流程</h2>
+          <p>URL normalization、robots check、MediaWiki API discovery、rate limit、retry 與 checkpoint。</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h2>資料瀏覽與匯出</h2>
+          <p>從 wiki.db 檢視 pages、categories、links、templates、images、revisions、infobox 與 text。</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h2>分析視覺化</h2>
+          <p>分類長條、文字摘要、network graph、資料品質與 compliance log 都能在 Web UI 檢查。</p>
+        </article>
       </section>
 
-      <section class="grid">
-        <a class="card link" href="#guided-walkthrough">
-          <h3>Watch Guided Demo</h3>
-          <p>Review the complete workflow through screenshots and recorded walkthroughs.</p>
-        </a>
-      </section>
-
-      <section class="card media-section" id="guided-walkthrough">
-        <h2>Guided Walkthrough</h2>
-        <p>
-          The floating guide walks an interviewer through Campaigns, Scraper, Process, Browse,
-          Analysis, Export, and Compliance Log with live page jumps and highlighted controls.
-        </p>
-        <video controls preload="metadata" poster="./assets/guided-demo/desktop-step-01-campaigns.png">
+      <section class="media-panel" id="walkthrough">
+        <div class="section-heading">
+          <p class="eyebrow">Guided Walkthrough</p>
+          <h2>使用者可以照著小幫手走完整流程</h2>
+          <p>
+            浮動導覽會跳到 Campaigns、Scraper、Process、Browse、Analysis、Export
+            與 Compliance Log，並高亮使用者應該看的區塊。
+          </p>
+        </div>
+        <video controls preload="metadata" poster="./assets/guided-demo/desktop-step-01-campaigns-overview.png">
           <source src="./assets/guided-demo/guided-demo-desktop.webm" type="video/webm" />
         </video>
       </section>
 
-      <section class="shot-grid">
-        <figure class="card shot">
-          <img src="./assets/guided-demo/desktop-step-01-campaigns.png" alt="Guided demo Campaigns overview" />
-          <figcaption>Campaigns overview</figcaption>
+      <section class="shot-grid" aria-label="Workflow section screenshots">
+        <figure>
+          <img src="./assets/guided-demo/desktop-step-01-campaigns-overview.png" alt="Campaigns dashboard section" />
+          <figcaption>Campaigns dashboard</figcaption>
         </figure>
-        <figure class="card shot">
-          <img src="./assets/guided-demo/desktop-step-09-browse.png" alt="Guided demo Data Browser" />
-          <figcaption>Data Browser</figcaption>
+        <figure>
+          <img src="./assets/guided-demo/desktop-step-09-browse-datasets.png" alt="Dataset browser section" />
+          <figcaption>Dataset browser</figcaption>
         </figure>
-        <figure class="card shot">
-          <img src="./assets/guided-demo/desktop-step-10-analysis.png" alt="Guided demo Analysis network" />
+        <figure>
+          <img src="./assets/guided-demo/desktop-step-10-analysis-network.png" alt="Analysis network graph section" />
           <figcaption>Analysis network</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/guided-demo/desktop-step-12-export-center.png" alt="Export center section" />
+          <figcaption>Export center</figcaption>
         </figure>
       </section>
     </main>

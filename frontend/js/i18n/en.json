@@ -475,7 +475,7 @@
             },
             "preset": {
                 "title": "Choose offline or live demo",
-                "body": "For interviews, start with the fast offline demo so the flow does not depend on external network state. A compliant live crawl preset remains available."
+                "body": "For user review, start with the fast offline demo so the flow does not depend on external network state. A compliant live crawl preset remains available."
             },
             "events": {
                 "title": "Track the crawler pipeline",
