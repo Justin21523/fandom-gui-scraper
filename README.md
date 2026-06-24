@@ -188,6 +188,26 @@ GUIDED_DEMO_OUT_DIR=/tmp/fandom-gui-scraper-guided-demo \\
   python scripts/capture_guided_demo.py
 ```
 
+### Guided Walkthrough Preview
+
+The floating guide is designed for interview review: it jumps to each workflow page, highlights the relevant control or result area, and explains what the user should do next.
+
+#### Full recordings
+
+<video src="docs/guided-demo/guided-demo-desktop.webm" controls width="100%" title="Desktop guided demo walkthrough"></video>
+
+<video src="docs/guided-demo/guided-demo-mobile.webm" controls width="390" title="Mobile guided demo walkthrough"></video>
+
+#### Key guide screenshots
+
+| Campaigns overview | Demo preset | Data Browser |
+| --- | --- | --- |
+| ![Guided demo step 1 - Campaigns](docs/guided-demo/desktop-step-01-campaigns.png) | ![Guided demo step 2 - Preset](docs/guided-demo/desktop-step-02-preset.png) | ![Guided demo step 9 - Browse](docs/guided-demo/desktop-step-09-browse.png) |
+
+| Analysis graph | Compliance Log | Mobile guide |
+| --- | --- | --- |
+| ![Guided demo step 10 - Analysis](docs/guided-demo/desktop-step-10-analysis.png) | ![Guided demo step 13 - Compliance](docs/guided-demo/desktop-step-13-compliance.png) | ![Guided demo mobile step 1](docs/guided-demo/mobile-step-01-campaigns.png) |
+
 ## 🖥️ Desktop GUI (Optional / Legacy)
 
 ### Prerequisites
