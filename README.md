@@ -97,7 +97,7 @@ Use this flow for a portfolio demo without depending on live network access.
 
 4. Walk through the product views:
 
-   Click the floating **Guide** button in the lower-right corner to run the interviewer-friendly guided walkthrough. It will move through Campaigns, Scraper, Process, Browse, Analysis, Export, and Compliance Log while highlighting the exact controls and result areas.
+   Click the floating **Guide** button in the lower-right corner to run the user-friendly guided walkthrough. It will move through Campaigns, Scraper, Process, Browse, Analysis, Export, and Compliance Log while highlighting the exact controls and result areas.
 
    - `#/scraper`: create-job workflow and compliance-oriented controls.
    - `#/campaigns`: multi-wiki campaign dashboard, per-wiki counts, events, and links to job data.
@@ -190,7 +190,7 @@ GUIDED_DEMO_OUT_DIR=/tmp/fandom-gui-scraper-guided-demo \\
 
 ### Guided Walkthrough Preview
 
-The floating guide is designed for interview review: it jumps to each workflow page, highlights the relevant control or result area, and explains what the user should do next.
+The floating guide is designed for user review: it jumps to each workflow page, highlights the relevant control or result area, and explains what the user should do next.
 
 #### Full recordings
 
@@ -202,11 +202,11 @@ The floating guide is designed for interview review: it jumps to each workflow p
 
 | Campaigns overview | Demo preset | Data Browser |
 | --- | --- | --- |
-| ![Guided demo step 1 - Campaigns](docs/guided-demo/desktop-step-01-campaigns.png) | ![Guided demo step 2 - Preset](docs/guided-demo/desktop-step-02-preset.png) | ![Guided demo step 9 - Browse](docs/guided-demo/desktop-step-09-browse.png) |
+| ![Guided demo step 1 - Campaigns](docs/guided-demo/desktop-step-01-campaigns-overview.png) | ![Guided demo step 2 - Preset](docs/guided-demo/desktop-step-02-campaign-preset.png) | ![Guided demo step 9 - Browse](docs/guided-demo/desktop-step-09-browse-datasets.png) |
 
 | Analysis graph | Compliance Log | Mobile guide |
 | --- | --- | --- |
-| ![Guided demo step 10 - Analysis](docs/guided-demo/desktop-step-10-analysis.png) | ![Guided demo step 13 - Compliance](docs/guided-demo/desktop-step-13-compliance.png) | ![Guided demo mobile step 1](docs/guided-demo/mobile-step-01-campaigns.png) |
+| ![Guided demo step 10 - Analysis](docs/guided-demo/desktop-step-10-analysis-network.png) | ![Guided demo step 13 - Compliance](docs/guided-demo/desktop-step-13-compliance-log.png) | ![Guided demo mobile step 1](docs/guided-demo/mobile-step-01-campaigns-overview.png) |
 
 ## 🖥️ Desktop GUI (Optional / Legacy)
 
