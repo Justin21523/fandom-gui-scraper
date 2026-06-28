@@ -13,12 +13,7 @@
     "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/frontend/integration",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/frontend/e2e",
     "lint": "eslint frontend/js/**/*.js",
-    "lint:fix": "eslint frontend/js/**/*.js --fix",
-    "demo:dev": "npm --prefix demo-app run dev",
-    "demo:build": "npm --prefix demo-app run build",
-    "demo:preview": "npm --prefix demo-app run preview",
-    "dev": "npm --prefix demo-app run dev",
-    "build": "npm --prefix demo-app run build"
+    "lint:fix": "eslint frontend/js/**/*.js --fix"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
